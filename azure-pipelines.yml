@@ -1,66 +1,104 @@
+# Azure DevOps Pipeline for Portfolio Deployment
+# File: azure-pipelines.yml
+
 trigger:
   branches:
     include:
       - main
       - master
       - develop
+  paths:
+    exclude:
+      - README.md
+      - docs/*
 
 pool:
-  name: Default   # 使用 Self-hosted Agent
+  name: Default          
 
 variables:
-  nodeVersion: '18.x'   # 或 '16.x' 避免 OpenSSL 问题
+  # Build variables
+  nodeVersion: '18.x'  # 如果想避免 OpenSSL 问题，可以改成 '16.x'
+  buildPath: '$(System.DefaultWorkingDirectory)'
+  distPath: '$(System.DefaultWorkingDirectory)/dist'
+  
+  # Deployment variables
+  targetServer: 'www.bon.cc'
   deployPath: '/var/www/portfolio'
   backupPath: '/var/www/portfolio-backup'
-
+  
 stages:
 - stage: Build
   displayName: 'Build Stage'
   jobs:
   - job: BuildJob
-    displayName: 'Build Node + React'
+    displayName: 'Build Portfolio'
     steps:
-    # 拉取代码
+    # Checkout source code
     - checkout: self
       clean: true
       fetchDepth: 1
-
-    # 设置 Node 版本
+    
+    # Setup Node.js
     - task: NodeTool@0
       displayName: 'Setup Node.js'
       inputs:
         versionSpec: '$(nodeVersion)'
         checkLatest: true
-
-    # 构建 React 前端
+    
+    # Cache node_modules
+    - task: Cache@2
+      displayName: 'Cache node_modules'
+      inputs:
+        key: 'npm | "$(Agent.OS)" | package-lock.json'
+        restoreKeys: |
+          npm | "$(Agent.OS)"
+        path: '$(System.DefaultWorkingDirectory)/node_modules'
+    
+    # Install dependencies
     - script: |
-        cd client
-        npm ci
+        npm ci --prefer-offline --no-audit
         npm install cross-env --save-dev
-        npx cross-env NODE_OPTIONS=--openssl-legacy-provider npm run build
-        mkdir -p ../dist/public
-        cp -r build/* ../dist/public/
-      displayName: 'Build React Frontend'
-
-    # 构建 Node.js 后端
+      displayName: 'Install Dependencies'
+      workingDirectory: '$(buildPath)'
+    
+    # Run tests (if available)
     - script: |
-        cd server
-        npm ci
-        npm run build   # 假设输出到 server/dist
-        cp -r dist/* ../dist/
-      displayName: 'Build Node Backend'
-
-    # 打包 dist 目录
+        if [ -f "package.json" ] && grep -q '"test"' package.json; then
+          npm run test -- --coverage --watchAll=false
+        else
+          echo "No test script found, skipping tests"
+        fi
+      displayName: 'Run Tests'
+      workingDirectory: '$(buildPath)'
+      continueOnError: true
+    
+    # Build the project (跨平台兼容 OpenSSL 问题)
+    - script: |
+        if grep -q '"build"' package.json; then
+          npx cross-env NODE_OPTIONS=--openssl-legacy-provider npm run build
+        elif [ -d "src" ]; then
+          echo "No build script found but src directory exists"
+          mkdir -p dist
+          cp -r src/* dist/ 2>/dev/null || cp -r ./* dist/
+        else
+          mkdir -p dist
+          cp -r ./* dist/
+          rm -rf dist/node_modules dist/.git dist/.gitignore dist/azure-pipelines.yml
+        fi
+      displayName: 'Build Project'
+      workingDirectory: '$(buildPath)'
+    
+    # Archive build artifacts
     - task: ArchiveFiles@2
       displayName: 'Archive Build Files'
       inputs:
-        rootFolderOrFile: '$(System.DefaultWorkingDirectory)/dist'
+        rootFolderOrFile: '$(distPath)'
         includeRootFolder: false
         archiveType: 'tar'
         archiveFile: '$(Build.ArtifactStagingDirectory)/portfolio-$(Build.BuildId).tar.gz'
         replaceExistingArchive: true
-
-    # 发布构建产物
+    
+    # Publish artifacts
     - task: PublishBuildArtifacts@1
       displayName: 'Publish Build Artifacts'
       inputs:
@@ -74,19 +112,19 @@ stages:
   condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
   jobs:
   - deployment: DeployToVM
-    displayName: 'Deploy to VM'
+    displayName: 'Deploy to Virtual Machine'
     environment: 'Production'
     strategy:
       runOnce:
         deploy:
           steps:
-          # 下载构建产物
+          # Download build artifacts
           - download: current
             artifact: portfolio-build
           
-          # 创建备份
+          # Deploy via SSH
           - task: SSH@0
-            displayName: 'Backup Current Deployment'
+            displayName: 'Create Backup'
             inputs:
               sshEndpoint: 'VM-SSH-Connection'
               runOptions: 'commands'
@@ -96,57 +134,76 @@ stages:
                   sudo cp -r $(deployPath) $(backupPath)
                   echo "Backup created at $(backupPath)"
                 fi
-
-          # 上传文件到 /tmp
+                sudo mkdir -p $(deployPath)
+                sudo chown -R $(whoami):www-data $(deployPath)
+          
           - task: CopyFilesOverSSH@0
-            displayName: 'Copy Package to Server'
+            displayName: 'Copy Files to Server'
             inputs:
               sshEndpoint: 'VM-SSH-Connection'
               sourceFolder: '$(Pipeline.Workspace)/portfolio-build/'
               contents: 'portfolio-$(Build.BuildId).tar.gz'
               targetFolder: '/tmp/'
               cleanTargetFolder: false
-
-          # 解压到部署目录
+          
           - task: SSH@0
             displayName: 'Deploy Application'
             inputs:
               sshEndpoint: 'VM-SSH-Connection'
               runOptions: 'commands'
               commands: |
-                sudo mkdir -p $(deployPath)
-                sudo tar -xzf /tmp/portfolio-$(Build.BuildId).tar.gz -C $(deployPath) --strip-components=0
+                cd /tmp
+                tar -xzf portfolio-$(Build.BuildId).tar.gz -C $(deployPath) --strip-components=0
                 sudo chown -R www-data:www-data $(deployPath)
                 sudo chmod -R 755 $(deployPath)
-                # 重启 Node.js 服务（PM2）
-                if command -v pm2 >/dev/null 2>&1; then
-                  pm2 restart all || pm2 start server.js --name portfolio --cwd $(deployPath)
-                fi
-                # 重载 Apache
-                if systemctl is-active --quiet apache2; then
+                if systemctl is-active --quiet nginx; then
+                  sudo systemctl reload nginx
+                elif systemctl is-active --quiet apache2; then
                   sudo systemctl reload apache2
                 fi
                 rm -f /tmp/portfolio-$(Build.BuildId).tar.gz
-                echo "Deployment completed"
-
-          # 健康检查
+                echo "Deployment completed successfully"
+          
           - task: SSH@0
             displayName: 'Health Check'
             inputs:
               sshEndpoint: 'VM-SSH-Connection'
               runOptions: 'commands'
               commands: |
-                sleep 5
-                status_code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost || echo "000")
-                if [ "$status_code" != "200" ]; then
-                  echo "Health check failed: $status_code"
+                sleep 10
+                response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost || echo "000")
+                if [ "$response" = "200" ]; then
+                  echo "Health check passed - Site is responding"
+                else
+                  echo "Health check failed - HTTP response: $response"
                   if [ -d "$(backupPath)" ]; then
-                    echo "Rolling back..."
+                    echo "Rolling back to previous version"
                     sudo rm -rf $(deployPath)
                     sudo mv $(backupPath) $(deployPath)
                     sudo systemctl reload apache2
                   fi
                   exit 1
-                else
-                  echo "Health check passed."
                 fi
+
+- stage: Notification
+  displayName: 'Notification Stage'
+  dependsOn: 
+    - Build
+    - Deploy
+  condition: always()
+  jobs:
+  - job: NotifyTeam
+    displayName: 'Send Notifications'
+    steps:
+    - script: |
+        if [ "$AGENT_JOBSTATUS" = "Succeeded" ]; then
+          echo "✅ Portfolio deployment successful!"
+          echo "🌐 Site: http://www.bon.cc"
+          echo "📦 Build: $(Build.BuildId)"
+          echo "🚀 Deployed from: $(Build.SourceBranch)"
+        else
+          echo "❌ Portfolio deployment failed!"
+          echo "🔍 Check logs for details"
+          echo "📦 Build: $(Build.BuildId)"
+        fi
+      displayName: 'Display Status'
