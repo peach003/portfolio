@@ -1,0 +1,225 @@
+# Azure DevOps Pipeline for Portfolio Deployment
+# File: azure-pipelines.yml
+
+trigger:
+  branches:
+    include:
+      - main
+      - master
+      - develop
+  paths:
+    exclude:
+      - README.md
+      - docs/*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  # Build variables
+  nodeVersion: '18.x'
+  buildPath: '$(System.DefaultWorkingDirectory)'
+  distPath: '$(System.DefaultWorkingDirectory)/dist'
+  
+  # Deployment variables
+  targetServer: 'www.bon.cc'
+  deployPath: '/var/www/portfolio'
+  backupPath: '/var/www/portfolio-backup'
+  
+stages:
+- stage: Build
+  displayName: 'Build Stage'
+  jobs:
+  - job: BuildJob
+    displayName: 'Build Portfolio'
+    steps:
+    # Checkout source code
+    - checkout: self
+      clean: true
+      fetchDepth: 1
+    
+    # Setup Node.js
+    - task: NodeTool@0
+      displayName: 'Setup Node.js'
+      inputs:
+        versionSpec: '$(nodeVersion)'
+        checkLatest: true
+    
+    # Cache node_modules
+    - task: Cache@2
+      displayName: 'Cache node_modules'
+      inputs:
+        key: 'npm | "$(Agent.OS)" | package-lock.json'
+        restoreKeys: |
+          npm | "$(Agent.OS)"
+        path: '$(System.DefaultWorkingDirectory)/node_modules'
+    
+    # Install dependencies
+    - script: |
+        npm ci --prefer-offline --no-audit
+      displayName: 'Install Dependencies'
+      workingDirectory: '$(buildPath)'
+    
+    # Run tests (if available)
+    - script: |
+        if [ -f "package.json" ] && grep -q '"test"' package.json; then
+          npm run test -- --coverage --watchAll=false
+        else
+          echo "No test script found, skipping tests"
+        fi
+      displayName: 'Run Tests'
+      workingDirectory: '$(buildPath)'
+      continueOnError: true
+    
+    # Build the project
+    - script: |
+        if grep -q '"build"' package.json; then
+          npm run build
+        elif [ -d "src" ]; then
+          # If no build script but src exists, assume it needs building
+          echo "No build script found but src directory exists"
+          mkdir -p dist
+          cp -r src/* dist/ 2>/dev/null || cp -r ./* dist/
+        else
+          # Static site, copy all files
+          mkdir -p dist
+          cp -r ./* dist/
+          # Remove node_modules and other unnecessary files from dist
+          rm -rf dist/node_modules dist/.git dist/.gitignore dist/azure-pipelines.yml
+        fi
+      displayName: 'Build Project'
+      workingDirectory: '$(buildPath)'
+    
+    # Archive build artifacts
+    - task: ArchiveFiles@2
+      displayName: 'Archive Build Files'
+      inputs:
+        rootFolderOrFile: '$(distPath)'
+        includeRootFolder: false
+        archiveType: 'tar'
+        archiveFile: '$(Build.ArtifactStagingDirectory)/portfolio-$(Build.BuildId).tar.gz'
+        replaceExistingArchive: true
+    
+    # Publish artifacts
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Build Artifacts'
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        ArtifactName: 'portfolio-build'
+        publishLocation: 'Container'
+
+- stage: Deploy
+  displayName: 'Deploy Stage'
+  dependsOn: Build
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  jobs:
+  - deployment: DeployToVM
+    displayName: 'Deploy to Virtual Machine'
+    environment: 'Production'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          # Download build artifacts
+          - download: current
+            artifact: portfolio-build
+          
+          # Deploy via SSH
+          - task: SSH@0
+            displayName: 'Create Backup'
+            inputs:
+              sshEndpoint: 'VM-SSH-Connection' # Service connection name
+              runOptions: 'commands'
+              commands: |
+                # Create backup of current deployment
+                if [ -d "$(deployPath)" ]; then
+                  sudo rm -rf $(backupPath)
+                  sudo cp -r $(deployPath) $(backupPath)
+                  echo "Backup created at $(backupPath)"
+                fi
+                
+                # Ensure deployment directory exists
+                sudo mkdir -p $(deployPath)
+                sudo chown -R $(whoami):www-data $(deployPath)
+          
+          - task: CopyFilesOverSSH@0
+            displayName: 'Copy Files to Server'
+            inputs:
+              sshEndpoint: 'VM-SSH-Connection'
+              sourceFolder: '$(Pipeline.Workspace)/portfolio-build/'
+              contents: 'portfolio-$(Build.BuildId).tar.gz'
+              targetFolder: '/tmp/'
+              cleanTargetFolder: false
+          
+          - task: SSH@0
+            displayName: 'Deploy Application'
+            inputs:
+              sshEndpoint: 'VM-SSH-Connection'
+              runOptions: 'commands'
+              commands: |
+                # Extract and deploy
+                cd /tmp
+                tar -xzf portfolio-$(Build.BuildId).tar.gz -C $(deployPath) --strip-components=0
+                
+                # Set proper permissions
+                sudo chown -R www-data:www-data $(deployPath)
+                sudo chmod -R 755 $(deployPath)
+                
+                # Restart web server (adjust based on your setup)
+                if systemctl is-active --quiet nginx; then
+                  sudo systemctl reload nginx
+                elif systemctl is-active --quiet apache2; then
+                  sudo systemctl reload apache2
+                fi
+                
+                # Clean up
+                rm -f /tmp/portfolio-$(Build.BuildId).tar.gz
+                
+                echo "Deployment completed successfully"
+          
+          # Health check
+          - task: SSH@0
+            displayName: 'Health Check'
+            inputs:
+              sshEndpoint: 'VM-SSH-Connection'
+              runOptions: 'commands'
+              commands: |
+                # Simple health check
+                sleep 10
+                response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost || echo "000")
+                if [ "$response" = "200" ]; then
+                  echo "Health check passed - Site is responding"
+                else
+                  echo "Health check failed - HTTP response: $response"
+                  # Rollback if health check fails
+                  if [ -d "$(backupPath)" ]; then
+                    echo "Rolling back to previous version"
+                    sudo rm -rf $(deployPath)
+                    sudo mv $(backupPath) $(deployPath)
+                    sudo systemctl reload apache2
+                  fi
+                  exit 1
+                fi
+
+- stage: Notification
+  displayName: 'Notification Stage'
+  dependsOn: 
+    - Build
+    - Deploy
+  condition: always()
+  jobs:
+  - job: NotifyTeam
+    displayName: 'Send Notifications'
+    steps:
+    - script: |
+        if [ "$AGENT_JOBSTATUS" = "Succeeded" ]; then
+          echo "✅ Portfolio deployment successful!"
+          echo "🌐 Site: http://www.bon.cc"
+          echo "📦 Build: $(Build.BuildId)"
+          echo "🚀 Deployed from: $(Build.SourceBranch)"
+        else
+          echo "❌ Portfolio deployment failed!"
+          echo "🔍 Check logs for details"
+          echo "📦 Build: $(Build.BuildId)"
+        fi
+      displayName: 'Display Status'
