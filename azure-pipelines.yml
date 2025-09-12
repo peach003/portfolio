@@ -17,7 +17,7 @@ pool:
 
 variables:
   # Build variables
-  nodeVersion: '18.x'
+  nodeVersion: '18.x'  # 如果想避免 OpenSSL 问题，可以改成 '16.x'
   buildPath: '$(System.DefaultWorkingDirectory)'
   distPath: '$(System.DefaultWorkingDirectory)/dist'
   
@@ -57,6 +57,7 @@ stages:
     # Install dependencies
     - script: |
         npm ci --prefer-offline --no-audit
+        npm install cross-env --save-dev
       displayName: 'Install Dependencies'
       workingDirectory: '$(buildPath)'
     
@@ -71,20 +72,17 @@ stages:
       workingDirectory: '$(buildPath)'
       continueOnError: true
     
-    # Build the project
+    # Build the project (跨平台兼容 OpenSSL 问题)
     - script: |
         if grep -q '"build"' package.json; then
-          npm run build
+          npx cross-env NODE_OPTIONS=--openssl-legacy-provider npm run build
         elif [ -d "src" ]; then
-          # If no build script but src exists, assume it needs building
           echo "No build script found but src directory exists"
           mkdir -p dist
           cp -r src/* dist/ 2>/dev/null || cp -r ./* dist/
         else
-          # Static site, copy all files
           mkdir -p dist
           cp -r ./* dist/
-          # Remove node_modules and other unnecessary files from dist
           rm -rf dist/node_modules dist/.git dist/.gitignore dist/azure-pipelines.yml
         fi
       displayName: 'Build Project'
@@ -128,17 +126,14 @@ stages:
           - task: SSH@0
             displayName: 'Create Backup'
             inputs:
-              sshEndpoint: 'VM-SSH-Connection' # Service connection name
+              sshEndpoint: 'VM-SSH-Connection'
               runOptions: 'commands'
               commands: |
-                # Create backup of current deployment
                 if [ -d "$(deployPath)" ]; then
                   sudo rm -rf $(backupPath)
                   sudo cp -r $(deployPath) $(backupPath)
                   echo "Backup created at $(backupPath)"
                 fi
-                
-                # Ensure deployment directory exists
                 sudo mkdir -p $(deployPath)
                 sudo chown -R $(whoami):www-data $(deployPath)
           
@@ -157,41 +152,30 @@ stages:
               sshEndpoint: 'VM-SSH-Connection'
               runOptions: 'commands'
               commands: |
-                # Extract and deploy
                 cd /tmp
                 tar -xzf portfolio-$(Build.BuildId).tar.gz -C $(deployPath) --strip-components=0
-                
-                # Set proper permissions
                 sudo chown -R www-data:www-data $(deployPath)
                 sudo chmod -R 755 $(deployPath)
-                
-                # Restart web server (adjust based on your setup)
                 if systemctl is-active --quiet nginx; then
                   sudo systemctl reload nginx
                 elif systemctl is-active --quiet apache2; then
                   sudo systemctl reload apache2
                 fi
-                
-                # Clean up
                 rm -f /tmp/portfolio-$(Build.BuildId).tar.gz
-                
                 echo "Deployment completed successfully"
           
-          # Health check
           - task: SSH@0
             displayName: 'Health Check'
             inputs:
               sshEndpoint: 'VM-SSH-Connection'
               runOptions: 'commands'
               commands: |
-                # Simple health check
                 sleep 10
                 response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost || echo "000")
                 if [ "$response" = "200" ]; then
                   echo "Health check passed - Site is responding"
                 else
                   echo "Health check failed - HTTP response: $response"
-                  # Rollback if health check fails
                   if [ -d "$(backupPath)" ]; then
                     echo "Rolling back to previous version"
                     sudo rm -rf $(deployPath)
