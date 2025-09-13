@@ -1,5 +1,6 @@
 # Azure DevOps Pipeline for Portfolio Deployment
 # File: azure-pipelines.yml
+# 完整无sudo版本 - 2025年9月13日更新
 
 trigger:
   branches:
@@ -19,12 +20,11 @@ variables:
   # Build variables
   nodeVersion: '18.x'
   buildPath: '$(System.DefaultWorkingDirectory)'
-  distPath: '$(System.DefaultWorkingDirectory)/dist'
   
   # Deployment variables
   targetServer: 'www.bon.cc'
   deployPath: '/var/www/portfolio'
-  backupPath: '/var/www/portfolio-backup'
+  backupPath: '~/portfolio-backups'
   
 stages:
 - stage: Build
@@ -71,23 +71,32 @@ stages:
       workingDirectory: '$(buildPath)'
       continueOnError: true
     
-    # Build the project
+    # Build the Next.js project
     - script: |
-        if grep -q '"build"' package.json; then
-          npm run build
-        elif [ -d "src" ]; then
-          # If no build script but src exists, assume it needs building
-          echo "No build script found but src directory exists"
-          mkdir -p dist
-          cp -r src/* dist/ 2>/dev/null || cp -r ./* dist/
-        else
-          # Static site, copy all files
-          mkdir -p dist
-          cp -r ./* dist/
-          # Remove node_modules and other unnecessary files from dist
-          rm -rf dist/node_modules dist/.git dist/.gitignore dist/azure-pipelines.yml
-        fi
+        echo "Building Next.js portfolio project..."
+        NODE_OPTIONS=--openssl-legacy-provider npm run build
+        echo "Build completed successfully"
       displayName: 'Build Project'
+      workingDirectory: '$(buildPath)'
+    
+    # Verify build output
+    - script: |
+        echo "=== Verifying build output ==="
+        echo "Current directory contents:"
+        ls -la
+        echo ""
+        if [ -d "out" ]; then
+          echo "✅ out folder exists"
+          echo "Files in out folder:"
+          ls -la out/ | head -10
+          echo "Total files: $(find out -type f | wc -l)"
+        else
+          echo "❌ out folder not found"
+          echo "Available directories:"
+          ls -la | grep "^d"
+          exit 1
+        fi
+      displayName: 'Verify Build Output'
       workingDirectory: '$(buildPath)'
     
     # Archive build artifacts
@@ -95,7 +104,7 @@ stages:
       displayName: 'Archive Build Files'
       condition: and(succeeded(), ne(variables['Agent.JobStatus'], 'Failed'))
       inputs:
-        rootFolderOrFile: '$(distPath)'
+        rootFolderOrFile: '$(Build.SourcesDirectory)/out' 
         includeRootFolder: false
         archiveType: 'tar'
         archiveFile: '$(Build.ArtifactStagingDirectory)/portfolio-$(Build.BuildId).tar.gz'
@@ -107,6 +116,8 @@ stages:
         ls -la $(Build.ArtifactStagingDirectory)/
         if [ -f "$(Build.ArtifactStagingDirectory)/portfolio-$(Build.BuildId).tar.gz" ]; then
           echo "✅ Archive created successfully"
+          echo "Archive size: $(du -h $(Build.ArtifactStagingDirectory)/portfolio-$(Build.BuildId).tar.gz)"
+          echo "Archive contents (first 10 files):"
           tar -tzf "$(Build.ArtifactStagingDirectory)/portfolio-$(Build.BuildId).tar.gz" | head -10
         else
           echo "❌ Archive not found"
@@ -138,24 +149,75 @@ stages:
           - download: current
             artifact: portfolio-build
           
-          # Deploy via SSH
+          # Create backup (完全无sudo版本)
           - task: SSH@0
             displayName: 'Create Backup'
             inputs:
-              sshEndpoint: 'VM-SSH-Connection' # Service connection name
-              runOptions: 'commands'
-              commands: |
-                # Create backup of current deployment
-                if [ -d "$(deployPath)" ]; then
-                  sudo rm -rf $(backupPath)
-                  sudo cp -r $(deployPath) $(backupPath)
-                  echo "Backup created at $(backupPath)"
+              sshEndpoint: 'VM-SSH-Connection'
+              runOptions: 'inline'
+              inline: |
+                #!/bin/bash
+                set -e
+                
+                echo "=== BACKUP PROCESS STARTED ==="
+                echo "User: $(whoami)"
+                echo "Home: $HOME"
+                echo "Current time: $(date)"
+                echo ""
+                
+                # 定义路径变量
+                DEPLOY_DIR="/var/www/portfolio"
+                BACKUP_BASE_DIR="$HOME/portfolio-backups"
+                TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+                BACKUP_DIR="$BACKUP_BASE_DIR/backup-$TIMESTAMP"
+                
+                # 创建备份基础目录
+                echo "Creating backup base directory: $BACKUP_BASE_DIR"
+                mkdir -p "$BACKUP_BASE_DIR"
+                
+                # 检查是否有现有部署需要备份
+                if [ -d "$DEPLOY_DIR" ] && [ "$(ls -A $DEPLOY_DIR 2>/dev/null)" ]; then
+                  echo "Found existing deployment, creating backup..."
+                  echo "Source: $DEPLOY_DIR"
+                  echo "Target: $BACKUP_DIR"
+                  
+                  # 创建备份
+                  mkdir -p "$BACKUP_DIR"
+                  cp -r "$DEPLOY_DIR"/* "$BACKUP_DIR/" 2>/dev/null
+                  
+                  # 验证备份
+                  if [ "$(ls -A $BACKUP_DIR 2>/dev/null)" ]; then
+                    echo "✅ Backup created successfully"
+                    echo "Backup location: $BACKUP_DIR"
+                    echo "Backup size: $(du -sh $BACKUP_DIR | cut -f1)"
+                  else
+                    echo "⚠️  Backup directory is empty, but continuing..."
+                  fi
+                  
+                  # 清理旧备份，保留最新5个
+                  echo ""
+                  echo "Cleaning up old backups..."
+                  OLD_BACKUPS=$(ls -1t "$BACKUP_BASE_DIR"/backup-* 2>/dev/null | tail -n +6)
+                  if [ -n "$OLD_BACKUPS" ]; then
+                    echo "$OLD_BACKUPS" | xargs rm -rf
+                    echo "✅ Old backups cleaned up"
+                  else
+                    echo "ℹ️  No old backups to clean"
+                  fi
+                  
+                else
+                  echo "ℹ️  No existing deployment found at $DEPLOY_DIR"
+                  echo "This might be the first deployment"
                 fi
                 
-                # Ensure deployment directory exists
-                sudo mkdir -p $(deployPath)
-                sudo chown -R $(whoami):www-data $(deployPath)
+                echo ""
+                echo "Current backups:"
+                ls -la "$BACKUP_BASE_DIR"/ 2>/dev/null || echo "No backups directory yet"
+                
+                echo ""
+                echo "✅ BACKUP PROCESS COMPLETED"
           
+          # Copy files to server
           - task: CopyFilesOverSSH@0
             displayName: 'Copy Files to Server'
             inputs:
@@ -165,55 +227,309 @@ stages:
               targetFolder: '/tmp/'
               cleanTargetFolder: false
           
+          # Deploy application (完全无sudo版本)
           - task: SSH@0
             displayName: 'Deploy Application'
             inputs:
               sshEndpoint: 'VM-SSH-Connection'
-              runOptions: 'commands'
-              commands: |
-                # Extract and deploy
-                cd /tmp
-                tar -xzf portfolio-$(Build.BuildId).tar.gz -C $(deployPath) --strip-components=0
+              runOptions: 'inline'
+              inline: |
+                #!/bin/bash
+                set -e
                 
-                # Set proper permissions
-                sudo chown -R www-data:www-data $(deployPath)
-                sudo chmod -R 755 $(deployPath)
+                echo "=== DEPLOYMENT PROCESS STARTED ==="
+                echo "User: $(whoami)"
+                echo "Build ID: $(Build.BuildId)"
+                echo "Current time: $(date)"
+                echo ""
                 
-                # Restart web server (adjust based on your setup)
-                if systemctl is-active --quiet nginx; then
-                  sudo systemctl reload nginx
-                elif systemctl is-active --quiet apache2; then
-                  sudo systemctl reload apache2
+                # 定义路径变量
+                DEPLOY_DIR="/var/www/portfolio"
+                ARCHIVE_FILE="/tmp/portfolio-$(Build.BuildId).tar.gz"
+                
+                # 验证上传的文件存在
+                echo "Checking uploaded archive..."
+                if [ ! -f "$ARCHIVE_FILE" ]; then
+                  echo "❌ Archive file not found: $ARCHIVE_FILE"
+                  echo "Available files in /tmp:"
+                  ls -la /tmp/portfolio-* 2>/dev/null || echo "No portfolio files found"
+                  exit 1
                 fi
                 
-                # Clean up
-                rm -f /tmp/portfolio-$(Build.BuildId).tar.gz
+                echo "✅ Archive file found: $ARCHIVE_FILE"
+                echo "Archive size: $(du -sh $ARCHIVE_FILE | cut -f1)"
+                echo ""
                 
-                echo "Deployment completed successfully"
+                # 检查部署目录和权限
+                echo "Checking deployment directory permissions..."
+                if [ ! -d "$DEPLOY_DIR" ]; then
+                  echo "❌ Deployment directory does not exist: $DEPLOY_DIR"
+                  echo ""
+                  echo "TO FIX THIS, run on server:"
+                  echo "sudo mkdir -p $DEPLOY_DIR"
+                  echo "sudo chown -R $(whoami):www-data $DEPLOY_DIR"
+                  echo "sudo chmod -R 755 $DEPLOY_DIR"
+                  exit 1
+                fi
+                
+                # 更可靠的写权限测试
+                echo "Testing write permissions..."
+                TEST_FILE="$DEPLOY_DIR/.deployment-test-$(date +%s)"
+                
+                if touch "$TEST_FILE" 2>/dev/null; then
+                  rm -f "$TEST_FILE"
+                  echo "✅ Write permission test PASSED"
+                else
+                  echo "❌ Write permission test FAILED"
+                  echo "Directory: $DEPLOY_DIR"
+                  echo "Current owner: $(ls -ld $DEPLOY_DIR | awk '{print $3":"$4}')"
+                  echo "Directory permissions: $(ls -ld $DEPLOY_DIR | awk '{print $1}')"
+                  echo "Current user: $(whoami)"
+                  echo ""
+                  echo "Directory contents:"
+                  ls -la "$DEPLOY_DIR"/ 2>/dev/null || echo "Cannot list directory contents"
+                  echo ""
+                  echo "TO FIX THIS, run on server:"
+                  echo "sudo chown -R $(whoami):www-data $DEPLOY_DIR"
+                  echo "sudo chmod -R 755 $DEPLOY_DIR"
+                  echo "# Also check if there are any immutable files:"
+                  echo "lsattr $DEPLOY_DIR/ 2>/dev/null || echo 'lsattr not available'"
+                  exit 1
+                fi
+                
+                echo "✅ Deployment directory permissions OK"
+                echo "Directory: $DEPLOY_DIR"
+                echo "Owner: $(ls -ld $DEPLOY_DIR | awk '{print $3":"$4}')"
+                echo ""
+                
+                # 清空部署目录
+                echo "Clearing deployment directory..."
+                rm -rf "$DEPLOY_DIR"/*
+                echo "✅ Deployment directory cleared"
+                echo ""
+                
+                # 解压和部署
+                echo "Extracting and deploying archive..."
+                cd /tmp
+                
+                # 检查压缩包内容
+                echo "Archive contents preview:"
+                tar -tzf "$ARCHIVE_FILE" | head -5
+                echo "..."
+                echo "Total files: $(tar -tzf $ARCHIVE_FILE | wc -l)"
+                echo ""
+                
+                # 解压到部署目录
+                tar -xzf "$ARCHIVE_FILE" -C "$DEPLOY_DIR"
+                echo "✅ Archive extracted to deployment directory"
+                echo ""
+                
+                # 设置文件权限
+                echo "Setting file permissions..."
+                chmod -R 755 "$DEPLOY_DIR"
+                echo "✅ File permissions set (755)"
+                echo ""
+                
+                # 验证部署
+                echo "Verifying deployment..."
+                if [ "$(ls -A $DEPLOY_DIR 2>/dev/null)" ]; then
+                  echo "✅ Deployment verification passed"
+                  echo "Deployed files count: $(find $DEPLOY_DIR -type f | wc -l)"
+                  echo "Deployment size: $(du -sh $DEPLOY_DIR | cut -f1)"
+                else
+                  echo "❌ Deployment verification failed - directory is empty"
+                  exit 1
+                fi
+                echo ""
+                
+                # 尝试重启Web服务器
+                echo "Attempting web server restart..."
+                WEB_SERVER_RESTARTED=false
+                
+                if command -v systemctl >/dev/null 2>&1; then
+                  # 检查Nginx
+                  if systemctl is-active --quiet nginx 2>/dev/null; then
+                    echo "Found active Nginx service"
+                    if systemctl reload nginx 2>/dev/null; then
+                      echo "✅ Nginx reloaded successfully"
+                      WEB_SERVER_RESTARTED=true
+                    else
+                      echo "⚠️  Could not reload Nginx without sudo"
+                      echo "TO FIX: Add to /etc/sudoers.d/webserver-reload:"
+                      echo "$(whoami) ALL=(ALL) NOPASSWD: /usr/bin/systemctl reload nginx"
+                    fi
+                  # 检查Apache
+                  elif systemctl is-active --quiet apache2 2>/dev/null; then
+                    echo "Found active Apache2 service"
+                    if systemctl reload apache2 2>/dev/null; then
+                      echo "✅ Apache2 reloaded successfully"
+                      WEB_SERVER_RESTARTED=true
+                    else
+                      echo "⚠️  Could not reload Apache2 without sudo"
+                      echo "TO FIX: Add to /etc/sudoers.d/webserver-reload:"
+                      echo "$(whoami) ALL=(ALL) NOPASSWD: /usr/bin/systemctl reload apache2"
+                    fi
+                  else
+                    echo "ℹ️  No active web server found (nginx/apache2)"
+                  fi
+                else
+                  echo "ℹ️  systemctl not available"
+                fi
+                
+                if [ "$WEB_SERVER_RESTARTED" = false ]; then
+                  echo "⚠️  Web server not restarted - may need manual restart"
+                fi
+                echo ""
+                
+                # 清理临时文件
+                echo "Cleaning up temporary files..."
+                rm -f "$ARCHIVE_FILE"
+                echo "✅ Temporary files cleaned up"
+                echo ""
+                
+                echo "✅ DEPLOYMENT COMPLETED SUCCESSFULLY"
+                echo "Deployment time: $(date)"
+                echo "Build ID: $(Build.BuildId)"
           
-          # Health check
+          # Health check (无sudo版本)
           - task: SSH@0
             displayName: 'Health Check'
             inputs:
               sshEndpoint: 'VM-SSH-Connection'
-              runOptions: 'commands'
-              commands: |
-                # Simple health check
+              runOptions: 'inline'
+              inline: |
+                #!/bin/bash
+                
+                echo "=== HEALTH CHECK STARTED ==="
+                echo "Current time: $(date)"
+                echo ""
+                
+                # 等待部署生效
+                echo "Waiting for deployment to settle..."
                 sleep 10
-                response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost || echo "000")
-                if [ "$response" = "200" ]; then
-                  echo "Health check passed - Site is responding"
-                else
-                  echo "Health check failed - HTTP response: $response"
-                  # Rollback if health check fails
-                  if [ -d "$(backupPath)" ]; then
-                    echo "Rolling back to previous version"
-                    sudo rm -rf $(deployPath)
-                    sudo mv $(backupPath) $(deployPath)
-                    sudo systemctl reload apache2
+                echo ""
+                
+                # 定义变量
+                DEPLOY_DIR="/var/www/portfolio"
+                BACKUP_BASE_DIR="$HOME/portfolio-backups"
+                HEALTH_CHECK_PASSED=false
+                
+                # 基本文件检查
+                echo "Checking deployed files..."
+                if [ -d "$DEPLOY_DIR" ] && [ "$(ls -A $DEPLOY_DIR 2>/dev/null)" ]; then
+                  echo "✅ Deployment directory contains files"
+                  
+                  # 检查关键文件
+                  if [ -f "$DEPLOY_DIR/index.html" ]; then
+                    echo "✅ index.html found"
+                  else
+                    echo "⚠️  index.html not found"
                   fi
-                  exit 1
+                else
+                  echo "❌ Deployment directory is empty or missing"
                 fi
+                echo ""
+                
+                # HTTP健康检查
+                echo "Testing HTTP connectivity..."
+                
+                # 尝试多个URL
+                URLS=("http://localhost" "http://127.0.0.1" "http://localhost:80")
+                
+                for url in "${URLS[@]}"; do
+                  echo "Testing: $url"
+                  
+                  if command -v curl >/dev/null 2>&1; then
+                    response=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 --max-time 30 "$url" 2>/dev/null || echo "000")
+                    
+                    if [ "$response" = "200" ]; then
+                      echo "✅ Health check PASSED - HTTP $response from $url"
+                      HEALTH_CHECK_PASSED=true
+                      
+                      # 额外的内容验证
+                      content=$(curl -s --connect-timeout 5 --max-time 15 "$url" 2>/dev/null || echo "")
+                      if echo "$content" | grep -q "<!DOCTYPE html" 2>/dev/null; then
+                        echo "✅ HTML content verification passed"
+                      elif echo "$content" | grep -q "<html" 2>/dev/null; then
+                        echo "✅ HTML content found"
+                      else
+                        echo "⚠️  Response received but content verification unclear"
+                      fi
+                      break
+                    else
+                      echo "❌ Health check failed - HTTP $response from $url"
+                    fi
+                  else
+                    echo "⚠️  curl not available for testing $url"
+                  fi
+                done
+                echo ""
+                
+                # 如果健康检查失败，尝试回滚
+                if [ "$HEALTH_CHECK_PASSED" = false ]; then
+                  echo "❌ HEALTH CHECK FAILED"
+                  echo ""
+                  
+                  # 查找最新备份
+                  LATEST_BACKUP=$(ls -1t "$BACKUP_BASE_DIR"/backup-* 2>/dev/null | head -n 1)
+                  
+                  if [ -n "$LATEST_BACKUP" ] && [ -d "$LATEST_BACKUP" ]; then
+                    echo "🔄 INITIATING ROLLBACK..."
+                    echo "Using backup: $LATEST_BACKUP"
+                    echo ""
+                    
+                    # 清除当前部署
+                    echo "Clearing failed deployment..."
+                    rm -rf "$DEPLOY_DIR"/*
+                    
+                    # 恢复备份
+                    echo "Restoring from backup..."
+                    cp -r "$LATEST_BACKUP"/* "$DEPLOY_DIR"/ 2>/dev/null
+                    chmod -R 755 "$DEPLOY_DIR"
+                    echo "✅ Backup restored"
+                    echo ""
+                    
+                    # 尝试重启Web服务器
+                    echo "Attempting to restart web server after rollback..."
+                    if command -v systemctl >/dev/null 2>&1; then
+                      if systemctl is-active --quiet nginx 2>/dev/null; then
+                        if systemctl reload nginx 2>/dev/null; then
+                          echo "✅ Nginx reloaded after rollback"
+                        else
+                          echo "⚠️  Could not reload Nginx after rollback"
+                        fi
+                      elif systemctl is-active --quiet apache2 2>/dev/null; then
+                        if systemctl reload apache2 2>/dev/null; then
+                          echo "✅ Apache2 reloaded after rollback"
+                        else
+                          echo "⚠️  Could not reload Apache2 after rollback"
+                        fi
+                      fi
+                    fi
+                    
+                    echo ""
+                    echo "✅ ROLLBACK COMPLETED"
+                    echo "Previous version has been restored"
+                    
+                  else
+                    echo "❌ NO BACKUP AVAILABLE FOR ROLLBACK"
+                    echo "Backup directory: $BACKUP_BASE_DIR"
+                    ls -la "$BACKUP_BASE_DIR"/ 2>/dev/null || echo "Backup directory does not exist"
+                  fi
+                  
+                  echo ""
+                  echo "❌ DEPLOYMENT FAILED - CHECK LOGS AND CONFIGURATION"
+                  exit 1
+                  
+                else
+                  echo "✅ HEALTH CHECK PASSED"
+                  echo "Site is responding correctly"
+                fi
+                
+                echo ""
+                echo "=== HEALTH CHECK COMPLETED ==="
+                echo "Status: $([ $HEALTH_CHECK_PASSED = true ] && echo "SUCCESS" || echo "FAILED")"
+                echo "Time: $(date)"
 
 - stage: Notification
   displayName: 'Notification Stage'
@@ -226,14 +542,68 @@ stages:
     displayName: 'Send Notifications'
     steps:
     - script: |
+        echo "=========================================="
+        echo "        DEPLOYMENT SUMMARY REPORT        "
+        echo "=========================================="
+        echo ""
+        echo "📋 PROJECT DETAILS:"
+        echo "   📦 Build ID: $(Build.BuildId)"
+        echo "   🌿 Branch: $(Build.SourceBranch)"
+        echo "   👤 Triggered by: $(Build.RequestedFor)"
+        echo "   ⏰ Started: $(System.JobStartTime)"
+        echo "   🖥️  Target Server: $(targetServer)"
+        echo "   📂 Deploy Path: $(deployPath)"
+        echo ""
+        
+        # 检查最终状态
         if [ "$AGENT_JOBSTATUS" = "Succeeded" ]; then
-          echo "✅ Portfolio deployment successful!"
-          echo "🌐 Site: http://www.bon.cc"
-          echo "📦 Build: $(Build.BuildId)"
-          echo "🚀 Deployed from: $(Build.SourceBranch)"
+          echo "🎉 DEPLOYMENT SUCCESS!"
+          echo ""
+          echo "✅ STATUS: COMPLETED SUCCESSFULLY"
+          echo "🌐 Site URL: http://www.bon.cc"
+          echo "🚀 New version is now LIVE"
+          echo "📊 Build artifacts published"
+          echo "🔄 Backup created for rollback safety"
+          echo ""
+          echo "📋 NEXT STEPS:"
+          echo "   • Verify site functionality manually"
+          echo "   • Monitor site performance"
+          echo "   • Check error logs if needed"
+          echo "   • Update documentation if required"
+          echo ""
+          echo "🔗 USEFUL LINKS:"
+          echo "   • Live Site: http://www.bon.cc"
+          echo "   • Build Logs: Available in Azure DevOps"
+          echo "   • Backup Location: ~/portfolio-backups/ on server"
+          
         else
-          echo "❌ Portfolio deployment failed!"
-          echo "🔍 Check logs for details"
-          echo "📦 Build: $(Build.BuildId)"
+          echo "❌ DEPLOYMENT FAILED!"
+          echo ""
+          echo "🚨 STATUS: FAILED"
+          echo "📝 Build ID: $(Build.BuildId)"
+          echo "🔍 Please check the pipeline logs for detailed error information"
+          echo ""
+          echo "🛠️  TROUBLESHOOTING CHECKLIST:"
+          echo "   • Check build logs for compilation errors"
+          echo "   • Verify SSH connection to $(targetServer)"
+          echo "   • Ensure server disk space is sufficient"
+          echo "   • Confirm /var/www/portfolio permissions"
+          echo "   • Check if web server is running"
+          echo "   • Verify Node.js compatibility"
+          echo ""
+          echo "🔄 RECOVERY OPTIONS:"
+          echo "   • Re-run the pipeline after fixing issues"
+          echo "   • Check backup in ~/portfolio-backups/ on server"
+          echo "   • Manual rollback if needed"
+          echo "   • Contact system administrator if permissions issues"
+          echo ""
+          echo "📧 NOTIFICATIONS:"
+          echo "   • Development team should be notified"
+          echo "   • Incident response may be required"
         fi
-      displayName: 'Display Status'
+        
+        echo ""
+        echo "=========================================="
+        echo "         END OF DEPLOYMENT REPORT         "
+        echo "=========================================="
+      displayName: 'Display Deployment Status'
