@@ -64,7 +64,7 @@ const Timeline = () => {
       </SectionText>
 
       {/* ✅ 在文字段落和黑色时间轴之间插入3D生活轮播 */}
-      <div style={{ margin: "40px auto", maxWidth: "1200px", overflow: "visible" }}>
+      <div style={{ margin: "20px auto", maxWidth: "1200px", overflow: "visible" }}>
   <LifeCarousel />
 </div>
 

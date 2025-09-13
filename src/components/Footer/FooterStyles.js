@@ -35,11 +35,16 @@ export const LinkItem = styled.a`
 	}
 
 	@media ${props => props.theme.breakpoints.sm} {
-		font-size: 8px;
-		line-height: 14px;
+		font-size: 12px;
+		line-height: 18px;
 		margin-bottom: 8px;
 		display: flex;
 		align-items: center;
+	}
+
+	@media ${props => props.theme.breakpoints.xs} {
+		font-size: 11px;
+		line-height: 16px;
 	}
 `
 
@@ -152,8 +157,13 @@ export const LinkTitle = styled.h4`
 	margin-bottom: 16px;
 
 	@media ${props => props.theme.breakpoints.sm} {
-		font-size: 10px;
-		line-height: 12px;
+		font-size: 12px;
+		line-height: 16px;
 		margin-bottom: 8px;
+	}
+
+	@media ${props => props.theme.breakpoints.xs} {
+		font-size: 11px;
+		line-height: 14px;
 	}
 `

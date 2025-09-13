@@ -1,3 +1,11 @@
+/*
+ * ATTENTION: An "eval-source-map" devtool has been used.
+ * This devtool is neither made for production nor for readable output files.
+ * It uses "eval()" calls to create a separate source file with attached SourceMaps in the browser devtools.
+ * If you are trying to read the output file, select a different devtool (https://webpack.js.org/configuration/devtool/)
+ * or disable the default devtool with "devtool: false".
+ * If you are looking for production-ready output files, see mode: "production" (https://webpack.js.org/configuration/mode/).
+ */
 (self["webpackChunk_N_E"] = self["webpackChunk_N_E"] || []).push([["src_components_LifeCarousel_js"],{
 
 /***/ "./src/components/LifeCarousel.js":
@@ -7,163 +15,8 @@
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   "default": function() { return /* binding */ LifeCarousel; }
-/* harmony export */ });
-/* harmony import */ var react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! react/jsx-dev-runtime */ "./node_modules/react/jsx-dev-runtime.js");
-/* harmony import */ var react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_0__);
-/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! react */ "./node_modules/react/index.js");
-/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(react__WEBPACK_IMPORTED_MODULE_1__);
-/* harmony import */ var swiper_react__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! swiper/react */ "./node_modules/swiper/swiper-react.mjs");
-/* harmony import */ var swiper_modules__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! swiper/modules */ "./node_modules/swiper/modules/index.mjs");
-/* harmony import */ var swiper_css__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! swiper/css */ "./node_modules/swiper/swiper.css");
-/* harmony import */ var swiper_css__WEBPACK_IMPORTED_MODULE_4___default = /*#__PURE__*/__webpack_require__.n(swiper_css__WEBPACK_IMPORTED_MODULE_4__);
-/* harmony import */ var swiper_css_effect_coverflow__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! swiper/css/effect-coverflow */ "./node_modules/swiper/modules/effect-coverflow.css");
-/* harmony import */ var swiper_css_effect_coverflow__WEBPACK_IMPORTED_MODULE_5___default = /*#__PURE__*/__webpack_require__.n(swiper_css_effect_coverflow__WEBPACK_IMPORTED_MODULE_5__);
-/* module decorator */ module = __webpack_require__.hmd(module);
-
-var _jsxFileName = "C:\\Users\\WD\\Desktop\\portfolio_website\\src\\components\\LifeCarousel.js";
-
-
-
-
-
-function LifeCarousel() {
-  var _this = this;
-
-  var images = ["/images/life1.jpg", "/images/life2.jpg", "/images/life3.jpg", "/images/life4.jpg", "/images/life5.jpg", "/images/life6.jpg", "/images/life7.jpg"];
-  return /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_0__.jsxDEV)("div", {
-    style: {
-      width: "100%",
-      maxWidth: "650px",
-      height: "650px",
-      margin: "0 auto",
-      overflow: "hidden"
-    },
-    children: /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_0__.jsxDEV)(swiper_react__WEBPACK_IMPORTED_MODULE_2__.Swiper, {
-      effect: 'coverflow',
-      grabCursor: true,
-      centeredSlides: true,
-      slidesPerView: 1 // ✅ 只显示一张
-      ,
-      coverflowEffect: {
-        rotate: 0,
-        stretch: 0,
-        depth: 100,
-        modifier: 1,
-        slideShadows: false
-      },
-      autoplay: {
-        delay: 3000,
-        disableOnInteraction: false
-      },
-      modules: [swiper_modules__WEBPACK_IMPORTED_MODULE_3__.EffectCoverflow, swiper_modules__WEBPACK_IMPORTED_MODULE_3__.Autoplay],
-      children: images.map(function (src, index) {
-        return /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_0__.jsxDEV)(swiper_react__WEBPACK_IMPORTED_MODULE_2__.SwiperSlide, {
-          style: {
-            display: "flex",
-            justifyContent: "center",
-            // ✅ 居中
-            alignItems: "center"
-          },
-          children: /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_0__.jsxDEV)("img", {
-            src: src,
-            alt: "Life ".concat(index + 1),
-            style: {
-              width: "60%",
-              // ✅ 图片宽度占容器80%
-              height: "90%",
-              // ✅ 图片高度占容器80%
-              objectFit: "cover",
-              borderRadius: "5px",
-              boxShadow: "0 8px 20px rgba(0,0,0,0.4)"
-            }
-          }, void 0, false, {
-            fileName: _jsxFileName,
-            lineNumber: 56,
-            columnNumber: 13
-          }, _this)
-        }, index, false, {
-          fileName: _jsxFileName,
-          lineNumber: 48,
-          columnNumber: 11
-        }, _this);
-      })
-    }, void 0, false, {
-      fileName: _jsxFileName,
-      lineNumber: 29,
-      columnNumber: 7
-    }, this)
-  }, void 0, false, {
-    fileName: _jsxFileName,
-    lineNumber: 19,
-    columnNumber: 5
-  }, this);
-}
-_c = LifeCarousel;
-
-var _c;
-
-$RefreshReg$(_c, "LifeCarousel");
-
-;
-    var _a, _b;
-    // Legacy CSS implementations will `eval` browser code in a Node.js context
-    // to extract CSS. For backwards compatibility, we need to check we're in a
-    // browser context before continuing.
-    if (typeof self !== 'undefined' &&
-        // AMP / No-JS mode does not inject these helpers:
-        '$RefreshHelpers$' in self) {
-        var currentExports = module.__proto__.exports;
-        var prevExports = (_b = (_a = module.hot.data) === null || _a === void 0 ? void 0 : _a.prevExports) !== null && _b !== void 0 ? _b : null;
-        // This cannot happen in MainTemplate because the exports mismatch between
-        // templating and execution.
-        self.$RefreshHelpers$.registerExportsForReactRefresh(currentExports, module.id);
-        // A module can be accepted automatically based on its exports, e.g. when
-        // it is a Refresh Boundary.
-        if (self.$RefreshHelpers$.isReactRefreshBoundary(currentExports)) {
-            // Save the previous exports on update so we can compare the boundary
-            // signatures.
-            module.hot.dispose(function (data) {
-                data.prevExports = currentExports;
-            });
-            // Unconditionally accept an update to this module, we'll check if it's
-            // still a Refresh Boundary later.
-            module.hot.accept();
-            // This field is set when the previous version of this module was a
-            // Refresh Boundary, letting us know we need to check for invalidation or
-            // enqueue an update.
-            if (prevExports !== null) {
-                // A boundary can become ineligible if its exports are incompatible
-                // with the previous exports.
-                //
-                // For example, if you add/remove/change exports, we'll want to
-                // re-execute the importing modules, and force those components to
-                // re-render. Similarly, if you convert a class component to a
-                // function, we want to invalidate the boundary.
-                if (self.$RefreshHelpers$.shouldInvalidateReactRefreshBoundary(prevExports, currentExports)) {
-                    module.hot.invalidate();
-                }
-                else {
-                    self.$RefreshHelpers$.scheduleUpdate();
-                }
-            }
-        }
-        else {
-            // Since we just executed the code for the module, it's possible that the
-            // new exports made it ineligible for being a boundary.
-            // We only care about the case when we were _previously_ a boundary,
-            // because we already accepted this update (accidental side effect).
-            var isNoLongerABoundary = prevExports !== null;
-            if (isNoLongerABoundary) {
-                module.hot.invalidate();
-            }
-        }
-    }
-
+eval("__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   \"default\": function() { return /* binding */ LifeCarousel; }\n/* harmony export */ });\n/* harmony import */ var react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! react/jsx-dev-runtime */ \"./node_modules/react/jsx-dev-runtime.js\");\n/* harmony import */ var react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_0__);\n/* harmony import */ var _home_wirt_port_node_modules_babel_runtime_helpers_esm_taggedTemplateLiteral__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./node_modules/@babel/runtime/helpers/esm/taggedTemplateLiteral */ \"./node_modules/@babel/runtime/helpers/esm/taggedTemplateLiteral.js\");\n/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! react */ \"./node_modules/react/index.js\");\n/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_2___default = /*#__PURE__*/__webpack_require__.n(react__WEBPACK_IMPORTED_MODULE_2__);\n/* harmony import */ var swiper_react__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! swiper/react */ \"./node_modules/swiper/swiper-react.mjs\");\n/* harmony import */ var swiper_modules__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! swiper/modules */ \"./node_modules/swiper/modules/index.mjs\");\n/* harmony import */ var styled_components__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! styled-components */ \"./node_modules/styled-components/dist/styled-components.browser.esm.js\");\n/* harmony import */ var swiper_css__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! swiper/css */ \"./node_modules/swiper/swiper.css\");\n/* harmony import */ var swiper_css__WEBPACK_IMPORTED_MODULE_5___default = /*#__PURE__*/__webpack_require__.n(swiper_css__WEBPACK_IMPORTED_MODULE_5__);\n/* harmony import */ var swiper_css_effect_fade__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! swiper/css/effect-fade */ \"./node_modules/swiper/modules/effect-fade.css\");\n/* harmony import */ var swiper_css_effect_fade__WEBPACK_IMPORTED_MODULE_6___default = /*#__PURE__*/__webpack_require__.n(swiper_css_effect_fade__WEBPACK_IMPORTED_MODULE_6__);\n/* module decorator */ module = __webpack_require__.hmd(module);\n\n\n\n\nvar _jsxFileName = \"/home/wirt/port/src/components/LifeCarousel.js\",\n    _s = $RefreshSig$();\n\nfunction _templateObject() {\n  var data = (0,_home_wirt_port_node_modules_babel_runtime_helpers_esm_taggedTemplateLiteral__WEBPACK_IMPORTED_MODULE_1__.default)([\"\\n  .life-carousel-swiper {\\n    overflow: hidden !important;\\n    \\n    .swiper-slide {\\n      width: 100% !important;\\n      height: 100% !important;\\n      display: flex !important;\\n      justify-content: center !important;\\n      align-items: center !important;\\n    }\\n    \\n    .swiper-wrapper {\\n      align-items: center !important;\\n    }\\n    \\n    /* \\u786E\\u4FDDfade\\u6548\\u679C\\u6B63\\u5E38\\u5DE5\\u4F5C */\\n    &.swiper-fade .swiper-slide {\\n      pointer-events: none;\\n      transition-property: opacity;\\n    }\\n    \\n    &.swiper-fade .swiper-slide.swiper-slide-active {\\n      pointer-events: auto;\\n    }\\n  }\\n\"]);\n\n  _templateObject = function _templateObject() {\n    return data;\n  };\n\n  return data;\n}\n\n\n\n\n\n\n // 确保轮播效果正常的全局样式\n\nvar SwiperGlobalStyles = (0,styled_components__WEBPACK_IMPORTED_MODULE_7__.createGlobalStyle)(_templateObject()); // 响应式容器\n\n_c = SwiperGlobalStyles;\nvar CarouselContainer = styled_components__WEBPACK_IMPORTED_MODULE_7__.default.div.withConfig({\n  displayName: \"LifeCarousel__CarouselContainer\",\n  componentId: \"sc-17ksrdh-0\"\n})([\"width:100%;max-width:650px;height:400px;margin:0 auto;overflow:visible;position:relative;@media \", \"{max-width:500px;height:360px;}@media \", \"{max-width:100%;width:100%;height:320px;padding:0 1rem;margin:0 auto;}@media \", \"{height:280px;padding:0 0.5rem;}\"], function (props) {\n  return props.theme.breakpoints.md;\n}, function (props) {\n  return props.theme.breakpoints.sm;\n}, function (props) {\n  return props.theme.breakpoints.xs;\n}); // 响应式图片样式\n\n_c2 = CarouselContainer;\nvar ResponsiveImage = styled_components__WEBPACK_IMPORTED_MODULE_7__.default.img.withConfig({\n  displayName: \"LifeCarousel__ResponsiveImage\",\n  componentId: \"sc-17ksrdh-1\"\n})([\"width:350px;height:380px;object-fit:cover;border-radius:8px;box-shadow:0 8px 20px rgba(0,0,0,0.4);@media \", \"{width:300px;height:340px;}@media \", \"{width:250px;height:320px;}@media \", \"{width:90%;height:auto;max-width:350px;min-height:280px;max-height:300px;object-fit:contain;box-shadow:0 4px 15px rgba(0,0,0,0.3);}@media \", \"{width:85%;max-width:300px;min-height:240px;max-height:260px;border-radius:5px;}\"], function (props) {\n  return props.theme.breakpoints.lg;\n}, function (props) {\n  return props.theme.breakpoints.md;\n}, function (props) {\n  return props.theme.breakpoints.sm;\n}, function (props) {\n  return props.theme.breakpoints.xs;\n});\n_c3 = ResponsiveImage;\nfunction LifeCarousel() {\n  _s();\n\n  var _this = this;\n\n  var _useState = (0,react__WEBPACK_IMPORTED_MODULE_2__.useState)(false),\n      isMobile = _useState[0],\n      setIsMobile = _useState[1];\n\n  var images = [\"/images/life1.jpg\", \"/images/life2.jpg\", \"/images/life3.jpg\", \"/images/life4.jpg\", \"/images/life5.jpg\", \"/images/life6.jpg\", \"/images/life7.jpg\"];\n  (0,react__WEBPACK_IMPORTED_MODULE_2__.useEffect)(function () {\n    var checkMobile = function checkMobile() {\n      setIsMobile(window.innerWidth <= 768);\n    };\n\n    checkMobile();\n    window.addEventListener('resize', checkMobile);\n    return function () {\n      return window.removeEventListener('resize', checkMobile);\n    };\n  }, []);\n  return /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_0__.jsxDEV)(react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_0__.Fragment, {\n    children: [/*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_0__.jsxDEV)(SwiperGlobalStyles, {}, void 0, false, {\n      fileName: _jsxFileName,\n      lineNumber: 128,\n      columnNumber: 7\n    }, this), /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_0__.jsxDEV)(CarouselContainer, {\n      children: /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_0__.jsxDEV)(swiper_react__WEBPACK_IMPORTED_MODULE_3__.Swiper, {\n        effect: \"fade\",\n        grabCursor: true,\n        centeredSlides: true,\n        slidesPerView: 1,\n        spaceBetween: 0,\n        loop: true,\n        fadeEffect: {\n          crossFade: true\n        },\n        speed: 600,\n        autoplay: {\n          delay: isMobile ? 4000 : 3000,\n          disableOnInteraction: false,\n          pauseOnMouseEnter: true\n        },\n        modules: [swiper_modules__WEBPACK_IMPORTED_MODULE_4__.EffectFade, swiper_modules__WEBPACK_IMPORTED_MODULE_4__.Autoplay],\n        style: {\n          width: '100%',\n          height: '100%',\n          overflow: 'hidden'\n        },\n        className: \"life-carousel-swiper\",\n        children: images.map(function (src, index) {\n          return /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_0__.jsxDEV)(swiper_react__WEBPACK_IMPORTED_MODULE_3__.SwiperSlide, {\n            style: {\n              display: \"flex\",\n              justifyContent: \"center\",\n              alignItems: \"center\",\n              width: '100%',\n              height: '100%'\n            },\n            children: /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_0__.jsxDEV)(ResponsiveImage, {\n              src: src,\n              alt: \"Life \".concat(index + 1)\n            }, void 0, false, {\n              fileName: _jsxFileName,\n              lineNumber: 165,\n              columnNumber: 13\n            }, _this)\n          }, \"slide-\".concat(index), false, {\n            fileName: _jsxFileName,\n            lineNumber: 155,\n            columnNumber: 11\n          }, _this);\n        })\n      }, void 0, false, {\n        fileName: _jsxFileName,\n        lineNumber: 130,\n        columnNumber: 7\n      }, this)\n    }, void 0, false, {\n      fileName: _jsxFileName,\n      lineNumber: 129,\n      columnNumber: 7\n    }, this)]\n  }, void 0, true);\n}\n\n_s(LifeCarousel, \"0VTTNJATKABQPGLm9RVT0tKGUgU=\");\n\n_c4 = LifeCarousel;\n\nvar _c, _c2, _c3, _c4;\n\n$RefreshReg$(_c, \"SwiperGlobalStyles\");\n$RefreshReg$(_c2, \"CarouselContainer\");\n$RefreshReg$(_c3, \"ResponsiveImage\");\n$RefreshReg$(_c4, \"LifeCarousel\");\n\n;\n    var _a, _b;\n    // Legacy CSS implementations will `eval` browser code in a Node.js context\n    // to extract CSS. For backwards compatibility, we need to check we're in a\n    // browser context before continuing.\n    if (typeof self !== 'undefined' &&\n        // AMP / No-JS mode does not inject these helpers:\n        '$RefreshHelpers$' in self) {\n        var currentExports = module.__proto__.exports;\n        var prevExports = (_b = (_a = module.hot.data) === null || _a === void 0 ? void 0 : _a.prevExports) !== null && _b !== void 0 ? _b : null;\n        // This cannot happen in MainTemplate because the exports mismatch between\n        // templating and execution.\n        self.$RefreshHelpers$.registerExportsForReactRefresh(currentExports, module.id);\n        // A module can be accepted automatically based on its exports, e.g. when\n        // it is a Refresh Boundary.\n        if (self.$RefreshHelpers$.isReactRefreshBoundary(currentExports)) {\n            // Save the previous exports on update so we can compare the boundary\n            // signatures.\n            module.hot.dispose(function (data) {\n                data.prevExports = currentExports;\n            });\n            // Unconditionally accept an update to this module, we'll check if it's\n            // still a Refresh Boundary later.\n            module.hot.accept();\n            // This field is set when the previous version of this module was a\n            // Refresh Boundary, letting us know we need to check for invalidation or\n            // enqueue an update.\n            if (prevExports !== null) {\n                // A boundary can become ineligible if its exports are incompatible\n                // with the previous exports.\n                //\n                // For example, if you add/remove/change exports, we'll want to\n                // re-execute the importing modules, and force those components to\n                // re-render. Similarly, if you convert a class component to a\n                // function, we want to invalidate the boundary.\n                if (self.$RefreshHelpers$.shouldInvalidateReactRefreshBoundary(prevExports, currentExports)) {\n                    module.hot.invalidate();\n                }\n                else {\n                    self.$RefreshHelpers$.scheduleUpdate();\n                }\n            }\n        }\n        else {\n            // Since we just executed the code for the module, it's possible that the\n            // new exports made it ineligible for being a boundary.\n            // We only care about the case when we were _previously_ a boundary,\n            // because we already accepted this update (accidental side effect).\n            var isNoLongerABoundary = prevExports !== null;\n            if (isNoLongerABoundary) {\n                module.hot.invalidate();\n            }\n        }\n    }\n//# sourceURL=[module]\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VzIjpbIndlYnBhY2s6Ly9fTl9FLy4vc3JjL2NvbXBvbmVudHMvTGlmZUNhcm91c2VsLmpzPzY3Y2UiXSwibmFtZXMiOlsiU3dpcGVyR2xvYmFsU3R5bGVzIiwiY3JlYXRlR2xvYmFsU3R5bGUiLCJDYXJvdXNlbENvbnRhaW5lciIsInN0eWxlZCIsInByb3BzIiwidGhlbWUiLCJicmVha3BvaW50cyIsIm1kIiwic20iLCJ4cyIsIlJlc3BvbnNpdmVJbWFnZSIsImxnIiwiTGlmZUNhcm91c2VsIiwidXNlU3RhdGUiLCJpc01vYmlsZSIsInNldElzTW9iaWxlIiwiaW1hZ2VzIiwidXNlRWZmZWN0IiwiY2hlY2tNb2JpbGUiLCJ3aW5kb3ciLCJpbm5lcldpZHRoIiwiYWRkRXZlbnRMaXN0ZW5lciIsInJlbW92ZUV2ZW50TGlzdGVuZXIiLCJjcm9zc0ZhZGUiLCJkZWxheSIsImRpc2FibGVPbkludGVyYWN0aW9uIiwicGF1c2VPbk1vdXNlRW50ZXIiLCJFZmZlY3RGYWRlIiwiQXV0b3BsYXkiLCJ3aWR0aCIsImhlaWdodCIsIm92ZXJmbG93IiwibWFwIiwic3JjIiwiaW5kZXgiLCJkaXNwbGF5IiwianVzdGlmeUNvbnRlbnQiLCJhbGlnbkl0ZW1zIl0sIm1hcHBpbmdzIjoiOzs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7O0FBQUE7QUFDQTtBQUNBO0FBQ0E7QUFDQTtDQUdBOztBQUNBLElBQU1BLGtCQUFrQixHQUFHQyxvRUFBSCxtQkFBeEIsQyxDQTRCQTs7S0E1Qk1ELGtCO0FBNkJOLElBQU1FLGlCQUFpQixHQUFHQyxxRUFBSDtBQUFBO0FBQUE7QUFBQSx3UUFRWixVQUFBQyxLQUFLO0FBQUEsU0FBSUEsS0FBSyxDQUFDQyxLQUFOLENBQVlDLFdBQVosQ0FBd0JDLEVBQTVCO0FBQUEsQ0FSTyxFQWFaLFVBQUFILEtBQUs7QUFBQSxTQUFJQSxLQUFLLENBQUNDLEtBQU4sQ0FBWUMsV0FBWixDQUF3QkUsRUFBNUI7QUFBQSxDQWJPLEVBcUJaLFVBQUFKLEtB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QUZMO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFWRiw2QkFDZ0JBLEtBRGhCO0FBQUE7QUFBQTtBQUFBO0FBQUEsbUJBRFU7QUFBQSxTQUFYO0FBeEJIO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFEQTtBQUFBO0FBQUE7QUFBQTtBQUFBLFlBRkY7QUFBQSxrQkFERjtBQWlERDs7R0F6RXVCdEIsWTs7TUFBQUEsWSIsImZpbGUiOiIuL3NyYy9jb21wb25lbnRzL0xpZmVDYXJvdXNlbC5qcy5qcyIsInNvdXJjZXNDb250ZW50IjpbImltcG9ydCBSZWFjdCwgeyB1c2VTdGF0ZSwgdXNlRWZmZWN0IH0gZnJvbSAncmVhY3QnO1xyXG5pbXBvcnQgeyBTd2lwZXIsIFN3aXBlclNsaWRlIH0gZnJvbSAnc3dpcGVyL3JlYWN0JztcclxuaW1wb3J0IHsgRWZmZWN0RmFkZSwgQXV0b3BsYXkgfSBmcm9tICdzd2lwZXIvbW9kdWxlcyc7XHJcbmltcG9ydCBzdHlsZWQsIHsgY3JlYXRlR2xvYmFsU3R5bGUgfSBmcm9tICdzdHlsZWQtY29tcG9uZW50cyc7XHJcbmltcG9ydCAnc3dpcGVyL2Nzcyc7XHJcbmltcG9ydCAnc3dpcGVyL2Nzcy9lZmZlY3QtZmFkZSc7XHJcblxyXG4vLyDnoa7kv53ova7mkq3mlYjmnpzmraPluLjnmoTlhajlsYDmoLflvI9cclxuY29uc3QgU3dpcGVyR2xvYmFsU3R5bGVzID0gY3JlYXRlR2xvYmFsU3R5bGVgXHJcbiAgLmxpZmUtY2Fyb3VzZWwtc3dpcGVyIHtcclxuICAgIG92ZXJmbG93OiBoaWRkZW4gIWltcG9ydGFudDtcclxuICAgIFxyXG4gICAgLnN3aXBlci1zbGlkZSB7XHJcbiAgICAgIHdpZHRoOiAxMDAlICFpbXBvcnRhbnQ7XHJcbiAgICAgIGhlaWdodDogMTAwJSAhaW1wb3J0YW50O1xyXG4gICAgICBkaXNwbGF5OiBmbGV4ICFpbXBvcnRhbnQ7XHJcbiAgICAgIGp1c3RpZnktY29udGVudDogY2VudGVyICFpbXBvcnRhbnQ7XHJcbiAgICAgIGFsaWduLWl0ZW1zOiBjZW50ZXIgIWltcG9ydGFudDtcclxuICAgIH1cclxuICAgIFxyXG4gICAgLnN3aXBlci13cmFwcGVyIHtcclxuICAgICAgYWxpZ24taXRlbXM6IGNlbnRlciAhaW1wb3J0YW50O1xyXG4gICAgfVxyXG4gICAgXHJcbiAgICAvKiDnoa7kv51mYWRl5pWI5p6c5q2j5bi45bel5L2cICovXHJcbiAgICAmLnN3aXBlci1mYWRlIC5zd2lwZXItc2xpZGUge1xyXG4gICAgICBwb2ludGVyLWV2ZW50czogbm9uZTtcclxuICAgICAgdHJhbnNpdGlvbi1wcm9wZXJ0eTogb3BhY2l0eTtcclxuICAgIH1cclxuICAgIFxyXG4gICAgJi5zd2lwZXItZmFkZSAuc3dpcGVyLXNsaWRlLnN3aXBlci1zbGlkZS1hY3RpdmUge1xyXG4gICAgICBwb2ludGVyLWV2ZW50czogYXV0bztcclxuICAgIH1cclxuICB9XHJcbmA7XHJcblxyXG4vLyDlk43lupTlvI/lrrnlmahcclxuY29uc3QgQ2Fyb3VzZWxDb250YWluZXIgPSBzdHlsZWQuZGl2YFxyXG4gIHdpZHRoOiAxMDAlO1xyXG4gIG1heC13aWR0aDogNjUwcHg7XHJcbiAgaGVpZ2h0OiA0MDBweDtcclxuICBtYXJnaW46IDAgYXV0bztcclxuICBvdmVyZmxvdzogdmlzaWJsZTtcclxuICBwb3NpdGlvbjogcmVsYXRpdmU7XHJcbiAgXHJcbiAgQG1lZGlhICR7cHJvcHMgPT4gcHJvcHMudGhlbWUuYnJlYWtwb2ludHMubWR9IHtcclxuICAgIG1heC13aWR0aDogNTAwcHg7XHJcbiAgICBoZWlnaHQ6IDM2MHB4O1xyXG4gIH1cclxuICBcclxuICBAbWVkaWEgJHtwcm9wcyA9PiBwcm9wcy50aGVtZS5icmVha3BvaW50cy5zbX0ge1xyXG4gICAgbWF4LXdpZHRoOiAxMDAlO1xyXG4gICAgd2lkdGg6IDEwMCU7XHJcbiAgICBoZWlnaHQ6IDMyMHB4O1xyXG4gICAgcGFkZGluZzogMCAxcmVtO1xyXG4gICAgbWFyZ2luOiAwIGF1dG87XHJcbiAgfVxyXG4gIFxyXG4gIEBtZWRpYSAke3Byb3BzID0+IHByb3BzLnRoZW1lLmJyZWFrcG9pbnRzLnhzfSB7XHJcbiAgICBoZWlnaHQ6IDI4MHB4O1xyXG4gICAgcGFkZGluZzogMCAwLjVyZW07XHJcbiAgfVxyXG5gO1xyXG5cclxuLy8g5ZON5bqU5byP5Zu+54mH5qC35byPXHJcbmNvbnN0IFJlc3BvbnNpdmVJbWFnZSA9IHN0eWxlZC5pbWdgXHJcbiAgd2lkdGg6IDM1MHB4O1xyXG4gIGhlaWdodDogMzgwcHg7XHJcbiAgb2JqZWN0LWZpdDogY292ZXI7XHJcbiAgYm9yZGVyLXJhZGl1czogOHB4O1xyXG4gIGJveC1zaGFkb3c6IDAgOHB4IDIwcHggcmdiYSgwLDAsMCwwLjQpO1xyXG4gIFxyXG4gIEBtZWRpYSAke3Byb3BzID0+IHByb3BzLnRoZW1lLmJyZWFrcG9pbnRzLmxnfSB7XHJcbiAgICB3aWR0aDogMzAwcHg7XHJcbiAgICBoZWlnaHQ6IDM0MHB4O1xyXG4gIH1cclxuICBcclxuICBAbWVkaWEgJHtwcm9wcyA9PiBwcm9wcy50aGVtZS5icmVha3BvaW50cy5tZH0ge1xyXG4gICAgd2lkdGg6IDI1MHB4O1xyXG4gICAgaGVpZ2h0OiAzMjBweDtcclxuICB9XHJcbiAgXHJcbiAgQG1lZGlhICR7cHJvcHMgPT4gcHJvcHMudGhlbWUuYnJlYWtwb2ludHMuc219IHtcclxuICAgIHdpZHRoOiA5MCU7XHJcbiAgICBoZWlnaHQ6IGF1dG87XHJcbiAgICBtYXgtd2lkdGg6IDM1MHB4O1xyXG4gICAgbWluLWhlaWdodDogMjgwcHg7XHJcbiAgICBtYXgtaGVpZ2h0OiAzMDBweDtcclxuICAgIG9iamVjdC1maXQ6IGNvbnRhaW47XHJcbiAgICBib3gtc2hhZG93OiAwIDRweCAxNXB4IHJnYmEoMCwwLDAsMC4zKTtcclxuICB9XHJcbiAgXHJcbiAgQG1lZGlhICR7cHJvcHMgPT4gcHJvcHMudGhlbWUuYnJlYWtwb2ludHMueHN9IHtcclxuICAgIHdpZHRoOiA4NSU7XHJcbiAgICBtYXgtd2lkdGg6IDMwMHB4O1xyXG4gICAgbWluLWhlaWdodDogMjQwcHg7XHJcbiAgICBtYXgtaGVpZ2h0OiAyNjBweDtcclxuICAgIGJvcmRlci1yYWRpdXM6IDVweDtcclxuICB9XHJcbmA7XHJcblxyXG5leHBvcnQgZGVmYXVsdCBmdW5jdGlvbiBMaWZlQ2Fyb3VzZWwoKSB7XHJcbiAgY29uc3QgW2lzTW9iaWxlLCBzZXRJc01vYmlsZV0gPSB1c2VTdGF0ZShmYWxzZSk7XHJcbiAgXHJcbiAgY29uc3QgaW1hZ2VzID0gW1xyXG4gICAgXCIvaW1hZ2VzL2xpZmUxLmpwZ1wiLFxyXG4gICAgXCIvaW1hZ2VzL2xpZmUyLmpwZ1wiLFxyXG4gICAgXCIvaW1hZ2VzL2xpZmUzLmpwZ1wiLFxyXG4gICAgXCIvaW1hZ2VzL2xpZmU0LmpwZ1wiLFxyXG4gICAgXCIvaW1hZ2VzL2xpZmU1LmpwZ1wiLFxyXG4gICAgXCIvaW1hZ2VzL2xpZmU2LmpwZ1wiLFxyXG4gICAgXCIvaW1hZ2VzL2xpZmU3LmpwZ1wiXHJcbiAgXTtcclxuXHJcbiAgdXNlRWZmZWN0KCgpID0+IHtcclxuICAgIGNvbnN0IGNoZWNrTW9iaWxlID0gKCkgPT4ge1xyXG4gICAgICBzZXRJc01vYmlsZSh3aW5kb3cuaW5uZXJXaWR0aCA8PSA3NjgpO1xyXG4gICAgfTtcclxuICAgIFxyXG4gICAgY2hlY2tNb2JpbGUoKTtcclxuICAgIHdpbmRvdy5hZGRFdmVudExpc3RlbmVyKCdyZXNpemUnLCBjaGVja01vYmlsZSk7XHJcbiAgICBcclxuICAgIHJldHVybiAoKSA9PiB3aW5kb3cucmVtb3ZlRXZlbnRMaXN0ZW5lcigncmVzaXplJywgY2hlY2tNb2JpbGUpO1xyXG4gIH0sIFtdKTtcclxuXHJcbiAgcmV0dXJuIChcclxuICAgIDw+XHJcbiAgICAgIDxTd2lwZXJHbG9iYWxTdHlsZXMgLz5cclxuICAgICAgPENhcm91c2VsQ29udGFpbmVyPlxyXG4gICAgICA8U3dpcGVyXHJcbiAgICAgICAgZWZmZWN0PVwiZmFkZVwiXHJcbiAgICAgICAgZ3JhYkN1cnNvcj17dHJ1ZX1cclxuICAgICAgICBjZW50ZXJlZFNsaWRlcz17dHJ1ZX1cclxuICAgICAgICBzbGlkZXNQZXJWaWV3PXsxfVxyXG4gICAgICAgIHNwYWNlQmV0d2Vlbj17MH1cclxuICAgICAgICBsb29wPXt0cnVlfVxyXG4gICAgICAgIGZhZGVFZmZlY3Q9e3tcclxuICAgICAgICAgIGNyb3NzRmFkZTogdHJ1ZVxyXG4gICAgICAgIH19XHJcbiAgICAgICAgc3BlZWQ9ezYwMH1cclxuICAgICAgICBhdXRvcGxheT17e1xyXG4gICAgICAgICAgZGVsYXk6IGlzTW9iaWxlID8gNDAwMCA6IDMwMDAsXHJcbiAgICAgICAgICBkaXNhYmxlT25JbnRlcmFjdGlvbjogZmFsc2UsXHJcbiAgICAgICAgICBwYXVzZU9uTW91c2VFbnRlcjogdHJ1ZSxcclxuICAgICAgICB9fVxyXG4gICAgICAgIG1vZHVsZXM9e1tFZmZlY3RGYWRlLCBBdXRvcGxheV19XHJcbiAgICAgICAgc3R5bGU9e3tcclxuICAgICAgICAgIHdpZHRoOiAnMTAwJScsXHJcbiAgICAgICAgICBoZWlnaHQ6ICcxMDAlJyxcclxuICAgICAgICAgIG92ZXJmbG93OiAnaGlkZGVuJyxcclxuICAgICAgICB9fVxyXG4gICAgICAgIGNsYXNzTmFtZT1cImxpZmUtY2Fyb3VzZWwtc3dpcGVyXCJcclxuICAgICAgPlxyXG4gICAgICAgIHtpbWFnZXMubWFwKChzcmMsIGluZGV4KSA9PiAoXHJcbiAgICAgICAgICA8U3dpcGVyU2xpZGVcclxuICAgICAgICAgICAga2V5PXtgc2xpZGUtJHtpbmRleH1gfVxyXG4gICAgICAgICAgICBzdHlsZT17e1xyXG4gICAgICAgICAgICAgIGRpc3BsYXk6IFwiZmxleFwiLFxyXG4gICAgICAgICAgICAgIGp1c3RpZnlDb250ZW50OiBcImNlbnRlclwiLFxyXG4gICAgICAgICAgICAgIGFsaWduSXRlbXM6IFwiY2VudGVyXCIsXHJcbiAgICAgICAgICAgICAgd2lkdGg6ICcxMDAlJyxcclxuICAgICAgICAgICAgICBoZWlnaHQ6ICcxMDAlJyxcclxuICAgICAgICAgICAgfX1cclxuICAgICAgICAgID5cclxuICAgICAgICAgICAgPFJlc3BvbnNpdmVJbWFnZVxyXG4gICAgICAgICAgICAgIHNyYz17c3JjfVxyXG4gICAgICAgICAgICAgIGFsdD17YExpZmUgJHtpbmRleCArIDF9YH1cclxuICAgICAgICAgICAgLz5cclxuICAgICAgICAgIDwvU3dpcGVyU2xpZGU+XHJcbiAgICAgICAgKSl9XHJcbiAgICAgIDwvU3dpcGVyPlxyXG4gICAgPC9DYXJvdXNlbENvbnRhaW5lcj5cclxuICAgIDwvPlxyXG4gICk7XHJcbn1cclxuIl0sInNvdXJjZVJvb3QiOiIifQ==\n//# sourceURL=webpack-internal:///./src/components/LifeCarousel.js\n");
 
 /***/ })
 
 }]);
-//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VzIjpbIndlYnBhY2s6Ly9fTl9FLy4vc3JjL2NvbXBvbmVudHMvTGlmZUNhcm91c2VsLmpzIl0sIm5hbWVzIjpbIkxpZmVDYXJvdXNlbCIsImltYWdlcyIsIndpZHRoIiwibWF4V2lkdGgiLCJoZWlnaHQiLCJtYXJnaW4iLCJvdmVyZmxvdyIsInJvdGF0ZSIsInN0cmV0Y2giLCJkZXB0aCIsIm1vZGlmaWVyIiwic2xpZGVTaGFkb3dzIiwiZGVsYXkiLCJkaXNhYmxlT25JbnRlcmFjdGlvbiIsIkVmZmVjdENvdmVyZmxvdyIsIkF1dG9wbGF5IiwibWFwIiwic3JjIiwiaW5kZXgiLCJkaXNwbGF5IiwianVzdGlmeUNvbnRlbnQiLCJhbGlnbkl0ZW1zIiwib2JqZWN0Rml0IiwiYm9yZGVyUmFkaXVzIiwiYm94U2hhZG93Il0sIm1hcHBpbmdzIjoiOzs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7OztBQUFBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFFZSxTQUFTQSxZQUFULEdBQXdCO0FBQUE7O0FBQ3JDLE1BQU1DLE1BQU0sR0FBRyxDQUNiLG1CQURhLEVBRWIsbUJBRmEsRUFHYixtQkFIYSxFQUliLG1CQUphLEVBS2IsbUJBTGEsRUFNYixtQkFOYSxFQU9iLG1CQVBhLENBQWY7QUFVQSxzQkFDRTtBQUNFLFNBQUssRUFBRTtBQUNMQyxXQUFLLEVBQUUsTUFERjtBQUVMQyxjQUFRLEVBQUUsT0FGTDtBQUdMQyxZQUFNLEVBQUUsT0FISDtBQUlMQyxZQUFNLEVBQUUsUUFKSDtBQUtMQyxjQUFRLEVBQUU7QUFMTCxLQURUO0FBQUEsMkJBVUUsOERBQUMsZ0RBQUQ7QUFDRSxZQUFNLEVBQUUsV0FEVjtBQUVFLGdCQUFVLEVBQUUsSUFGZDtBQUdFLG9CQUFjLEVBQUUsSUFIbEI7QUFJRSxtQkFBYSxFQUFFLENBSmpCLENBSXFCO0FBSnJCO0FBS0UscUJBQWUsRUFBRTtBQUNmQyxjQUFNLEVBQUUsQ0FETztBQUVmQyxlQUFPLEVBQUUsQ0FGTTtBQUdmQyxhQUFLLEVBQUUsR0FIUTtBQUlmQyxnQkFBUSxFQUFFLENBSks7QUFLZkMsb0JBQVksRUFBRTtBQUxDLE9BTG5CO0FBWUUsY0FBUSxFQUFFO0FBQ1JDLGFBQUssRUFBRSxJQURDO0FBRVJDLDRCQUFvQixFQUFFO0FBRmQsT0FaWjtBQWdCRSxhQUFPLEVBQUUsQ0FBQ0MsMkRBQUQsRUFBa0JDLG9EQUFsQixDQWhCWDtBQUFBLGdCQWtCR2QsTUFBTSxDQUFDZSxHQUFQLENBQVcsVUFBQ0MsR0FBRCxFQUFNQyxLQUFOO0FBQUEsNEJBQ1YsOERBQUMscURBQUQ7QUFFRSxlQUFLLEVBQUU7QUFDTEMsbUJBQU8sRUFBRSxNQURKO0FBRUxDLDBCQUFjLEVBQUUsUUFGWDtBQUVxQjtBQUMxQkMsc0JBQVUsRUFBRTtBQUhQLFdBRlQ7QUFBQSxpQ0FRRTtBQUNFLGVBQUcsRUFBRUosR0FEUDtBQUVFLGVBQUcsaUJBQVVDLEtBQUssR0FBRyxDQUFsQixDQUZMO0FBR0UsaUJBQUssRUFBRTtBQUNMaEIsbUJBQUssRUFBRSxLQURGO0FBQ1c7QUFDaEJFLG9CQUFNLEVBQUUsS0FGSDtBQUVXO0FBQ2hCa0IsdUJBQVMsRUFBRSxPQUhOO0FBSUxDLDBCQUFZLEVBQUUsS0FKVDtBQUtMQyx1QkFBUyxFQUFFO0FBTE47QUFIVDtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBUkYsV0FDT04sS0FEUDtBQUFBO0FBQUE7QUFBQTtBQUFBLGlCQURVO0FBQUEsT0FBWDtBQWxCSDtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBVkY7QUFBQTtBQUFBO0FBQUE7QUFBQSxVQURGO0FBc0REO0tBakV1QmxCLFkiLCJmaWxlIjoic3RhdGljL2NodW5rcy9zcmNfY29tcG9uZW50c19MaWZlQ2Fyb3VzZWxfanMuanMiLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgUmVhY3QgZnJvbSAncmVhY3QnO1xyXG5pbXBvcnQgeyBTd2lwZXIsIFN3aXBlclNsaWRlIH0gZnJvbSAnc3dpcGVyL3JlYWN0JztcclxuaW1wb3J0IHsgRWZmZWN0Q292ZXJmbG93LCBBdXRvcGxheSB9IGZyb20gJ3N3aXBlci9tb2R1bGVzJztcclxuaW1wb3J0ICdzd2lwZXIvY3NzJztcclxuaW1wb3J0ICdzd2lwZXIvY3NzL2VmZmVjdC1jb3ZlcmZsb3cnO1xyXG5cclxuZXhwb3J0IGRlZmF1bHQgZnVuY3Rpb24gTGlmZUNhcm91c2VsKCkge1xyXG4gIGNvbnN0IGltYWdlcyA9IFtcclxuICAgIFwiL2ltYWdlcy9saWZlMS5qcGdcIixcclxuICAgIFwiL2ltYWdlcy9saWZlMi5qcGdcIixcclxuICAgIFwiL2ltYWdlcy9saWZlMy5qcGdcIixcclxuICAgIFwiL2ltYWdlcy9saWZlNC5qcGdcIixcclxuICAgIFwiL2ltYWdlcy9saWZlNS5qcGdcIixcclxuICAgIFwiL2ltYWdlcy9saWZlNi5qcGdcIixcclxuICAgIFwiL2ltYWdlcy9saWZlNy5qcGdcIlxyXG4gIF07XHJcblxyXG4gIHJldHVybiAoXHJcbiAgICA8ZGl2XHJcbiAgICAgIHN0eWxlPXt7XHJcbiAgICAgICAgd2lkdGg6IFwiMTAwJVwiLFxyXG4gICAgICAgIG1heFdpZHRoOiBcIjY1MHB4XCIsXHJcbiAgICAgICAgaGVpZ2h0OiBcIjY1MHB4XCIsXHJcbiAgICAgICAgbWFyZ2luOiBcIjAgYXV0b1wiLFxyXG4gICAgICAgIG92ZXJmbG93OiBcImhpZGRlblwiLFxyXG4gICAgICAgXHJcbiAgICAgIH19XHJcbiAgICA+XHJcbiAgICAgIDxTd2lwZXJcclxuICAgICAgICBlZmZlY3Q9eydjb3ZlcmZsb3cnfVxyXG4gICAgICAgIGdyYWJDdXJzb3I9e3RydWV9XHJcbiAgICAgICAgY2VudGVyZWRTbGlkZXM9e3RydWV9XHJcbiAgICAgICAgc2xpZGVzUGVyVmlldz17MX0gIC8vIOKchSDlj6rmmL7npLrkuIDlvKBcclxuICAgICAgICBjb3ZlcmZsb3dFZmZlY3Q9e3tcclxuICAgICAgICAgIHJvdGF0ZTogMCxcclxuICAgICAgICAgIHN0cmV0Y2g6IDAsXHJcbiAgICAgICAgICBkZXB0aDogMTAwLFxyXG4gICAgICAgICAgbW9kaWZpZXI6IDEsXHJcbiAgICAgICAgICBzbGlkZVNoYWRvd3M6IGZhbHNlLFxyXG4gICAgICAgIH19XHJcbiAgICAgICAgYXV0b3BsYXk9e3tcclxuICAgICAgICAgIGRlbGF5OiAzMDAwLFxyXG4gICAgICAgICAgZGlzYWJsZU9uSW50ZXJhY3Rpb246IGZhbHNlLFxyXG4gICAgICAgIH19XHJcbiAgICAgICAgbW9kdWxlcz17W0VmZmVjdENvdmVyZmxvdywgQXV0b3BsYXldfVxyXG4gICAgICA+XHJcbiAgICAgICAge2ltYWdlcy5tYXAoKHNyYywgaW5kZXgpID0+IChcclxuICAgICAgICAgIDxTd2lwZXJTbGlkZVxyXG4gICAgICAgICAgICBrZXk9e2luZGV4fVxyXG4gICAgICAgICAgICBzdHlsZT17e1xyXG4gICAgICAgICAgICAgIGRpc3BsYXk6IFwiZmxleFwiLFxyXG4gICAgICAgICAgICAgIGp1c3RpZnlDb250ZW50OiBcImNlbnRlclwiLCAvLyDinIUg5bGF5LitXHJcbiAgICAgICAgICAgICAgYWxpZ25JdGVtczogXCJjZW50ZXJcIlxyXG4gICAgICAgICAgICB9fVxyXG4gICAgICAgICAgPlxyXG4gICAgICAgICAgICA8aW1nXHJcbiAgICAgICAgICAgICAgc3JjPXtzcmN9XHJcbiAgICAgICAgICAgICAgYWx0PXtgTGlmZSAke2luZGV4ICsgMX1gfVxyXG4gICAgICAgICAgICAgIHN0eWxlPXt7XHJcbiAgICAgICAgICAgICAgICB3aWR0aDogXCI2MCVcIiwgICAvLyDinIUg5Zu+54mH5a695bqm5Y2g5a655ZmoODAlXHJcbiAgICAgICAgICAgICAgICBoZWlnaHQ6IFwiOTAlXCIsICAvLyDinIUg5Zu+54mH6auY5bqm5Y2g5a655ZmoODAlXHJcbiAgICAgICAgICAgICAgICBvYmplY3RGaXQ6IFwiY292ZXJcIixcclxuICAgICAgICAgICAgICAgIGJvcmRlclJhZGl1czogXCI1cHhcIixcclxuICAgICAgICAgICAgICAgIGJveFNoYWRvdzogXCIwIDhweCAyMHB4IHJnYmEoMCwwLDAsMC40KVwiLFxyXG4gICAgICAgICAgICAgIH19XHJcbiAgICAgICAgICAgIC8+XHJcbiAgICAgICAgICA8L1N3aXBlclNsaWRlPlxyXG4gICAgICAgICkpfVxyXG4gICAgICA8L1N3aXBlcj5cclxuICAgIDwvZGl2PlxyXG4gICk7XHJcbn1cclxuIl0sInNvdXJjZVJvb3QiOiIifQ==

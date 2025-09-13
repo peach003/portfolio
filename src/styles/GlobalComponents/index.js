@@ -10,17 +10,27 @@ export const Section = styled.section`
   position: relative;
   overflow: hidden;
   grid-template-columns: 1fr 1fr;
+  gap: 2rem;
 
   @media ${(props) => props.theme.breakpoints.md} {
-    padding: 24px 48px 0;
+    padding: 24px 24px 0;
     flex-direction: column;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
   }
 
   @media ${(props) => props.theme.breakpoints.sm} {
     padding: ${(props) => props.nopadding ? "0" : "16px 16px 0" } ;
-
     width: calc(100vw - 32px);
     flex-direction: column;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    display: flex;
+  }
+
+  @media ${(props) => props.theme.breakpoints.xs} {
+    padding: ${(props) => props.nopadding ? "0" : "12px 12px 0" } ;
+    gap: 0.8rem;
   }
 `
 

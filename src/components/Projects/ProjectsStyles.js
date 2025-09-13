@@ -25,11 +25,31 @@ export const GridContainer = styled.section`
   column-gap: 2rem;
   row-gap: 3rem;
   
+  @media ${(props) => props.theme.breakpoints.lg} {
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    padding: 2.5rem;
+    column-gap: 1.5rem;
+    row-gap: 2.5rem;
+  }
+
+  @media ${(props) => props.theme.breakpoints.md} {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    padding: 2rem;
+    column-gap: 1rem;
+    row-gap: 2rem;
+  }
+  
   @media ${(props) => props.theme.breakpoints.sm} {
     display: flex;
     flex-direction: column;
-    padding: 2rem;
+    padding: 1.5rem;
     padding-bottom: 0;
+    gap: 1.5rem;
+  }
+
+  @media ${(props) => props.theme.breakpoints.xs} {
+    padding: 1rem;
+    gap: 1rem;
   }
 `;
 
@@ -43,9 +63,23 @@ export const BlogCard = styled.div`
   height: 100%;
   overflow: hidden;
   
+  @media ${(props) => props.theme.breakpoints.lg} {
+    width: 350px;
+  }
+
+  @media ${(props) => props.theme.breakpoints.md} {
+    width: 300px;
+  }
+  
   @media ${(props) => props.theme.breakpoints.sm} {
     width: 100%;
     height: auto;
+    max-width: 400px;
+    margin: 0 auto;
+  }
+
+  @media ${(props) => props.theme.breakpoints.xs} {
+    border-radius: 8px;
   }
 `;
 
