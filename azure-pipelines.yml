@@ -95,7 +95,7 @@ stages:
       displayName: 'Archive Build Files'
       condition: and(succeeded(), ne(variables['Agent.JobStatus'], 'Failed'))
       inputs:
-        rootFolderOrFile: '$(distPath)'
+        rootFolderOrFile: '$(Build.SourcesDirectory)/out' 
         includeRootFolder: false
         archiveType: 'tar'
         archiveFile: '$(Build.ArtifactStagingDirectory)/portfolio-$(Build.BuildId).tar.gz'
