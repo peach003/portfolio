@@ -266,16 +266,25 @@ stages:
                   echo "❌ Health check failed - HTTP response: $response"
                   
                   # Rollback if health check fails and backup exists
-                  if [ -d "$(backupPath)" ]; then
+                  BACKUP_DIR="$(backupPath)"
+                  LATEST_BACKUP=$(ls -1t "$BACKUP_DIR"/backup-* 2>/dev/null | head -n 1)
+                  
+                  if [ -n "$LATEST_BACKUP" ] && [ -d "$LATEST_BACKUP" ]; then
                     echo "🔄 Rolling back to previous version..."
-                    sudo rm -rf $(deployPath)
-                    sudo mv $(backupPath) $(deployPath)
+                    echo "Using backup: $LATEST_BACKUP"
                     
-                    # Restart web server after rollback
-                    if systemctl is-active --quiet nginx; then
-                      sudo systemctl reload nginx
-                    elif systemctl is-active --quiet apache2; then
-                      sudo systemctl reload apache2
+                    # Clear current deployment and restore backup
+                    rm -rf $(deployPath)/*
+                    cp -r "$LATEST_BACKUP"/* $(deployPath)/
+                    chmod -R 755 $(deployPath)
+                    
+                    # Try to restart web server after rollback
+                    if command -v systemctl >/dev/null 2>&1; then
+                      if systemctl is-active --quiet nginx 2>/dev/null; then
+                        systemctl reload nginx 2>/dev/null && echo "✅ Nginx reloaded after rollback" || echo "⚠️  Could not reload nginx"
+                      elif systemctl is-active --quiet apache2 2>/dev/null; then
+                        systemctl reload apache2 2>/dev/null && echo "✅ Apache2 reloaded after rollback" || echo "⚠️  Could not reload apache2"
+                      fi
                     fi
                     
                     echo "✅ Rollback completed"
