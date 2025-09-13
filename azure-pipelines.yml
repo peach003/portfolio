@@ -270,13 +270,30 @@ stages:
                   echo "sudo chown -R $(whoami):www-data $DEPLOY_DIR"
                   echo "sudo chmod -R 755 $DEPLOY_DIR"
                   exit 1
-                elif [ ! -w "$DEPLOY_DIR" ]; then
-                  echo "❌ No write permission to deployment directory: $DEPLOY_DIR"
+                fi
+                
+                # 更可靠的写权限测试
+                echo "Testing write permissions..."
+                TEST_FILE="$DEPLOY_DIR/.deployment-test-$(date +%s)"
+                
+                if touch "$TEST_FILE" 2>/dev/null; then
+                  rm -f "$TEST_FILE"
+                  echo "✅ Write permission test PASSED"
+                else
+                  echo "❌ Write permission test FAILED"
+                  echo "Directory: $DEPLOY_DIR"
                   echo "Current owner: $(ls -ld $DEPLOY_DIR | awk '{print $3":"$4}')"
+                  echo "Directory permissions: $(ls -ld $DEPLOY_DIR | awk '{print $1}')"
+                  echo "Current user: $(whoami)"
+                  echo ""
+                  echo "Directory contents:"
+                  ls -la "$DEPLOY_DIR"/ 2>/dev/null || echo "Cannot list directory contents"
                   echo ""
                   echo "TO FIX THIS, run on server:"
                   echo "sudo chown -R $(whoami):www-data $DEPLOY_DIR"
                   echo "sudo chmod -R 755 $DEPLOY_DIR"
+                  echo "# Also check if there are any immutable files:"
+                  echo "lsattr $DEPLOY_DIR/ 2>/dev/null || echo 'lsattr not available'"
                   exit 1
                 fi
                 
