@@ -8,7 +8,7 @@ const Technologies = () =>  (
     <SectionDivider divider />
     <SectionTitle>Technologies</SectionTitle>
     <SectionText>
-    Familiar with back-end and front-end development, AI integration, cloud deployment, and security engineering, with strong problem-solving skills, adaptability, and effective teamwork in cross-functional environments.
+    Skilled in full-stack development (back-end & front-end), AI integration, cloud deployment, and security engineering, with proven problem-solving ability, adaptability, and collaborative skills in cross-functional environments.
     </SectionText>
     <List>
       <ListItem>
@@ -43,7 +43,7 @@ const Technologies = () =>  (
           <ListTitle>DevOps&DevSecOps</ListTitle>
           <ListParagraph>
             Experience with <br />
-            GitHub Actions (CI/CD), AWS Lambda,STRIDE Threat Modeling, AES Symmetric & Asymmetric Encryption, Firewall/WAF/IDS, Database-Application Separation
+            Azure DevOps (CI/CD), SAST/SCA/DAST, STRIDE, Snyk, SonarQube, OWASP
           </ListParagraph>
         </ListContainer>
       </ListItem>

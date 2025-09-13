@@ -1,7 +1,7 @@
 export const projects = [
   {
     title: 'Used Car Management System',
-    description: "Built a scalable Used Car Management System using Python (Django), React (TypeScript), and AWS services, achieving 30% faster queries with high availability and security compliance.",
+    description: "Developed a full-stack web application with Django backend and React + TypeScript frontend. Optimized RESTful APIs, boosting query efficiency by 30%. Deployed on AWS Lambda and S3 with CI/CD via GitHub Actions, ensuring high availability, security compliance, and streamlined deployments.",
       image: '/images/1.png',
       tags: ['React', 'Python','SQLite','AWS Lambda + S3'],
     source: 'https://github.com/peach003/Car-rental',
@@ -10,7 +10,7 @@ export const projects = [
   },
   {
     title: 'AI-based Intelligent Toll Collection System',
-    description:"Developed an AI-powered highway toll collection system using C#/.NET Core, YOLOv8 license plate recognition, MySQL, and AWS, achieving 95% recognition accuracy and 99% data consistency with robust multi-layer security.",
+    description:"Designed and implemented an AI-powered highway toll collection system leveraging C#/.NET Core, YOLOv8 license plate recognition, MySQL, and AWS. Achieved 95% license plate recognition accuracy and 99% data consistency, while ensuring system integrity through a robust multi-layer security architecture.",
     image: '/images/2.png',
     tags: ['.NET Core', 'React', 'MySQL','YOLOv8','AWS','Data Security & Encryption'],
     source: 'https://github.com/peach003/Highway-Intelligent-Image-Recognition-Toll-Collection-System',
@@ -28,11 +28,11 @@ export const projects = [
   },
   {
     title: 'DevOps&DevSecOps',
-    description: "Implemented a secure DevOps pipeline using GitHub Actions, AWS Lambda, S3, API Gateway, and CloudWatch, integrating STRIDE threat modeling, AES symmetric/asymmetric encryption, firewall/WAF/IDS, and database–application isolation, achieving automated CI/CD, ISO 27001 compliance, high availability, and scalable serverless deployment.",
+    description: "Built secure DevOps/DevSecOps pipelines with Azure DevOps, Next.js, and self-hosted infrastructure, integrating SAST, SCA, DAST, STRIDE, vulnerability scanning (Snyk, SonarQube, OWASP), secrets detection, and ISO 27001 compliance, achieving zero-trust architecture, high availability, scalable deployments, and comprehensive audit trails.",
     image: '/images/4.jpg',
-    tags: ['GitHub Actions', 'STRIDE threat modeling','AWS Lambda', 'SIEM','AES symmetric/asymmetric encryption'],
-    source: 'https://google.com',
-    visit: 'https://google.com',
+    tags: ['Azure DevOps', 'SAST','SCA', 'DAST','STRIDE','SSH Deployment'],
+    source: 'https://github.com/peach003/Devops',
+    visit: 'https://github.com/peach003/Devops',
     id: 3,
   },
 ];

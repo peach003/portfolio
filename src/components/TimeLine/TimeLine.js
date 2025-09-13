@@ -60,9 +60,7 @@ const Timeline = () => {
     <Section id="about">
       <SectionTitle>About Me</SectionTitle>
       <SectionText>
-        Combining a background in finance with full-stack development skills, I bring a unique
-        blend of business insight, technical expertise, and security awareness to deliver solutions
-        that drive business value.
+        Part business brain, part tech tinkerer, full‑time optimist. I collect passport stamps and sci‑fi plot twists with equal enthusiasm — always exploring, always learning.
       </SectionText>
 
       {/* ✅ 在文字段落和黑色时间轴之间插入3D生活轮播 */}
