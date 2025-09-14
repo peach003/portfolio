@@ -32,7 +32,7 @@ export const projects = [
     image: '/images/4.jpg',
     tags: ['Azure DevOps', 'SAST','SCA', 'DAST','STRIDE','SSH Deployment'],
     source: 'https://github.com/peach003/Devops',
-    visit: 'https://github.com/peach003/Devops',
+    visit: 'https://dev.azure.com/8600315/Portfolio',
     id: 3,
   },
 ];
