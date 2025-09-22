@@ -1,0 +1,329 @@
+# ============================================================================
+# Security Monitoring Pipeline with SonarCloud
+# ============================================================================
+# 使用SonarCloud + Snyk + ZAP的完整安全管道
+# ============================================================================
+
+# 明确禁用 Pull Request 触发
+pr: none
+
+trigger:
+  branches:
+    include:
+      - main  # 改为 main 分支
+  paths:
+    include:
+      - security-pipeline.yml  # 只监控安全管道文件变化
+
+pool:
+  name: 'Default'
+
+variables:
+  nodeVersion: '18.x'
+  buildPath: '$(System.DefaultWorkingDirectory)'
+  sonarCloudOrganization: '8600315'
+  sonarCloudProjectKey: '8600315_Portfolio'
+  sonarCloudProjectName: 'Portfolio'
+  zapVmIp: 'localhost'
+  zapPort: '8080'
+  targetUrl: 'http://www.bon.cc'
+  zapApiKey: ''
+
+stages:
+- stage: StaticSecurity
+  displayName: 'Static Security Analysis'
+  jobs:
+  
+  # SonarCloud 代码分析
+  - job: SonarQubeAnalysis
+    displayName: 'SonarCloud Code Analysis'
+    steps:
+    
+    - checkout: self
+      fetchDepth: 0
+    
+    - task: NodeTool@0
+      displayName: 'Setup Node.js'
+      inputs:
+        versionSpec: '$(nodeVersion)'
+        checkLatest: true
+    
+    - task: SonarCloudPrepare@1
+      displayName: 'Prepare SonarCloud Analysis'
+      inputs:
+        SonarCloud: 'Sonar'
+        organization: '$(sonarCloudOrganization)'
+        scannerMode: 'CLI'
+        configMode: 'manual'
+        cliProjectKey: '$(sonarCloudProjectKey)'
+        cliProjectName: '$(sonarCloudProjectName)'
+        cliSources: '.'
+        extraProperties: |
+          sonar.branch.name=main
+          sonar.exclusions=**/node_modules/**,**/out/**,**/.next/**,**/coverage/**,**/*.min.js,**/public/**
+          sonar.javascript.lcov.reportPaths=coverage/lcov.info
+          sonar.typescript.lcov.reportPaths=coverage/lcov.info
+          sonar.coverage.exclusions=**/*.test.js,**/*.spec.js,**/test/**,**/tests/**,**/__tests__/**
+    
+    - script: |
+        npm ci --prefer-offline --no-audit
+      displayName: 'Install Dependencies'
+      workingDirectory: '$(buildPath)'
+    
+    - script: |
+        if [ -f "package.json" ] && grep -q '"test.*coverage"' package.json; then
+          npm run test:coverage || npm run test -- --coverage --watchAll=false || true
+        else
+          echo "No coverage test script found, skipping coverage"
+        fi
+      displayName: 'Run Tests with Coverage'
+      workingDirectory: '$(buildPath)'
+      continueOnError: true
+    
+    - task: SonarCloudAnalyze@1
+      displayName: 'Run SonarCloud Code Analysis'
+      continueOnError: true
+    
+    - task: SonarCloudPublish@1
+      displayName: 'Publish SonarCloud Quality Gate Result'
+      inputs:
+        pollingTimeoutSec: '300'
+      condition: succeededOrFailed()
+      continueOnError: true
+
+  # Snyk 依赖扫描
+  - job: SnykSecurity
+    displayName: 'Snyk Dependency Security Scan'
+    steps:
+    
+    - checkout: self
+    
+    - task: NodeTool@0
+      displayName: 'Setup Node.js for Snyk'
+      inputs:
+        versionSpec: '$(nodeVersion)'
+        checkLatest: true
+    
+    - script: |
+        npm ci --prefer-offline --no-audit
+      displayName: 'Install Dependencies for Snyk'
+      workingDirectory: '$(buildPath)'
+    
+    - task: SnykSecurityScan@1
+      displayName: 'Run Snyk Security Scan'
+      inputs:
+        serviceConnectionEndpoint: 'Snyk'
+        testType: 'app'
+        severityThreshold: 'medium'
+        monitorWhen: 'always'
+        failOnIssues: false
+        projectName: 'Portfolio'
+        additionalArguments: '--file=package.json'
+    
+    - task: PublishTestResults@2
+      displayName: 'Publish Snyk Test Results'
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: '**/*snyk-test-results.xml'
+        mergeTestResults: true
+        failTaskOnFailedTests: false
+      condition: always()
+
+- stage: DynamicSecurity
+  displayName: 'Dynamic Security Testing'
+  dependsOn: StaticSecurity
+  condition: succeeded()
+  jobs:
+  
+  - job: ZAPSecurityScan
+    displayName: 'OWASP ZAP Security Scan'
+    steps:
+    
+    - task: Bash@3
+      displayName: 'Check ZAP Service Status'
+      inputs:
+        targetType: 'inline'
+        script: |
+          echo "Checking ZAP service status..."
+          if curl -s "http://$(zapVmIp):$(zapPort)/JSON/core/view/version/" > /dev/null 2>&1; then
+            VERSION=$(curl -s "http://$(zapVmIp):$(zapPort)/JSON/core/view/version/" | grep -o '"version":"[^"]*"' | cut -d'"' -f4)
+            echo "ZAP is running. Version: $VERSION"
+          else
+            echo "##vso[task.logissue type=error]ZAP service is not accessible"
+            echo "Start ZAP with: ./zap.sh -daemon -host 0.0.0.0 -port $(zapPort) -config api.disablekey=true"
+            exit 1
+          fi
+    
+    - task: Bash@3
+      displayName: 'Wait for Website Availability'
+      inputs:
+        targetType: 'inline'
+        script: |
+          echo "Checking website availability at $(targetUrl)..."
+          sleep 30
+          
+          MAX_ATTEMPTS=5
+          ATTEMPT=0
+          
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            echo "Attempt $ATTEMPT/$MAX_ATTEMPTS..."
+            
+            if HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$(targetUrl)" 2>/dev/null) && [ "$HTTP_CODE" = "200" ]; then
+              echo "Website is available! HTTP $HTTP_CODE"
+              break
+            else
+              echo "Attempt $ATTEMPT failed"
+              if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
+                echo "Retrying in 30 seconds..."
+                sleep 30
+              fi
+            fi
+          done
+    
+    - task: Bash@3
+      displayName: 'ZAP Security Scan'
+      inputs:
+        targetType: 'inline'
+        script: |
+          echo "Starting ZAP security scan..."
+          API_KEY_PARAM=""
+          if [ -n "$(zapApiKey)" ]; then
+            API_KEY_PARAM="&apikey=$(zapApiKey)"
+          fi
+          
+          # 创建会话
+          curl -s "http://$(zapVmIp):$(zapPort)/JSON/core/action/newSession/?name=portfolio-scan&overwrite=true${API_KEY_PARAM}" > /dev/null
+          
+          # 配置上下文 - 使用 Python 进行 URL 编码（不需要 jq）
+          ENCODED_URL=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$(targetUrl).*'))")
+          curl -s "http://$(zapVmIp):$(zapPort)/JSON/context/action/includeInContext/?contextName=Default+Context&regex=${ENCODED_URL}${API_KEY_PARAM}" > /dev/null
+          
+          # Spider扫描
+          ENCODED_TARGET=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$(targetUrl)'))")
+          SPIDER_RESPONSE=$(curl -s "http://$(zapVmIp):$(zapPort)/JSON/spider/action/scan/?url=${ENCODED_TARGET}${API_KEY_PARAM}")
+          SPIDER_ID=$(echo "$SPIDER_RESPONSE" | grep -o '"scan":"[0-9]*"' | grep -o '[0-9]*')
+          echo "Spider scan started with ID: $SPIDER_ID"
+          
+          # 等待Spider完成
+          while true; do
+            STATUS_RESPONSE=$(curl -s "http://$(zapVmIp):$(zapPort)/JSON/spider/view/status/?scanId=${SPIDER_ID}${API_KEY_PARAM}")
+            PROGRESS=$(echo "$STATUS_RESPONSE" | grep -o '"status":"[0-9]*"' | grep -o '[0-9]*')
+            echo "Spider progress: ${PROGRESS}%"
+            if [ "$PROGRESS" = "100" ]; then
+              break
+            fi
+            sleep 10
+          done
+          echo "Spider scan completed"
+          
+          # 主动扫描
+          ASCAN_RESPONSE=$(curl -s "http://$(zapVmIp):$(zapPort)/JSON/ascan/action/scan/?url=${ENCODED_TARGET}${API_KEY_PARAM}")
+          ASCAN_ID=$(echo "$ASCAN_RESPONSE" | grep -o '"scan":"[0-9]*"' | grep -o '[0-9]*')
+          echo "Active scan started with ID: $ASCAN_ID"
+          
+          # 等待主动扫描完成
+          while true; do
+            STATUS_RESPONSE=$(curl -s "http://$(zapVmIp):$(zapPort)/JSON/ascan/view/status/?scanId=${ASCAN_ID}${API_KEY_PARAM}")
+            PROGRESS=$(echo "$STATUS_RESPONSE" | grep -o '"status":"[0-9]*"' | grep -o '[0-9]*')
+            echo "Active scan progress: ${PROGRESS}%"
+            if [ "$PROGRESS" = "100" ]; then
+              break
+            fi
+            sleep 20
+          done
+          
+          echo "ZAP scan completed"
+      timeoutInMinutes: 45
+    
+    - task: Bash@3
+      displayName: 'Generate Security Reports'
+      inputs:
+        targetType: 'inline'
+        script: |
+          API_KEY_PARAM=""
+          if [ -n "$(zapApiKey)" ]; then
+            API_KEY_PARAM="?apikey=$(zapApiKey)"
+          fi
+          
+          REPORT_DIR="$(Build.ArtifactStagingDirectory)"
+          mkdir -p "$REPORT_DIR"
+          
+          # HTML报告
+          curl -s "http://$(zapVmIp):$(zapPort)/OTHER/core/other/htmlreport/${API_KEY_PARAM}" -o "$REPORT_DIR/zap-security-report.html"
+          
+          # JSON报告
+          curl -s "http://$(zapVmIp):$(zapPort)/JSON/core/view/alerts/${API_KEY_PARAM}" > "$REPORT_DIR/zap-security-report.json"
+          
+          # 获取摘要 - 使用 grep 替代 jq
+          SUMMARY=$(curl -s "http://$(zapVmIp):$(zapPort)/JSON/core/view/alertsSummary/${API_KEY_PARAM}")
+          HIGH=$(echo "$SUMMARY" | grep -o '"High":"[0-9]*"' | grep -o '[0-9]*')
+          MEDIUM=$(echo "$SUMMARY" | grep -o '"Medium":"[0-9]*"' | grep -o '[0-9]*')
+          LOW=$(echo "$SUMMARY" | grep -o '"Low":"[0-9]*"' | grep -o '[0-9]*')
+          
+          echo "Security Scan Results:"
+          echo "  High Risk: ${HIGH:-0}"
+          echo "  Medium Risk: ${MEDIUM:-0}"
+          echo "  Low Risk: ${LOW:-0}"
+          
+          # 设置变量
+          echo "##vso[task.setvariable variable=ZAP_HIGH_RISK;isOutput=true]${HIGH:-0}"
+          echo "##vso[task.setvariable variable=ZAP_MEDIUM_RISK;isOutput=true]${MEDIUM:-0}"
+          echo "##vso[task.setvariable variable=ZAP_LOW_RISK;isOutput=true]${LOW:-0}"
+      condition: always()
+    
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Security Reports'
+      inputs:
+        pathToPublish: '$(Build.ArtifactStagingDirectory)'
+        artifactName: 'security-reports'
+      condition: always()
+
+- stage: SecurityGates
+  displayName: 'Security Quality Gates'
+  dependsOn: 
+    - StaticSecurity
+    - DynamicSecurity
+  condition: always()
+  jobs:
+  
+  - job: SecurityValidation
+    displayName: 'Security Gate Validation'
+    variables:
+      ZAP_HIGH_RISK: $[ stageDependencies.DynamicSecurity.ZAPSecurityScan.outputs['GenerateSecurityReports.ZAP_HIGH_RISK'] ]
+      ZAP_MEDIUM_RISK: $[ stageDependencies.DynamicSecurity.ZAPSecurityScan.outputs['GenerateSecurityReports.ZAP_MEDIUM_RISK'] ]
+      ZAP_LOW_RISK: $[ stageDependencies.DynamicSecurity.ZAPSecurityScan.outputs['GenerateSecurityReports.ZAP_LOW_RISK'] ]
+    
+    steps:
+    - task: Bash@3
+      displayName: 'Evaluate Security Results'
+      inputs:
+        targetType: 'inline'
+        script: |
+          echo "Evaluating security scan results..."
+          echo "Target: $(targetUrl)"
+          echo ""
+          
+          # 获取变量值，默认为0
+          HIGH_RISK=${ZAP_HIGH_RISK:-0}
+          MEDIUM_RISK=${ZAP_MEDIUM_RISK:-0}
+          
+          echo "Security Status:"
+          echo "  High Risk: $HIGH_RISK"
+          echo "  Medium Risk: $MEDIUM_RISK"
+          
+          if [ "$HIGH_RISK" -gt 0 ]; then
+            echo "##vso[task.logissue type=error]Security Gate Failed: $HIGH_RISK high-risk vulnerabilities"
+            echo "SECURITY GATE: FAILED"
+            exit 1
+          else
+            echo "SECURITY GATE: PASSED"
+          fi
+
+schedules:
+- cron: "0 3 * * 1"
+  displayName: Weekly Security Scan
+  branches:
+    include:
+    - main
+  always: true
