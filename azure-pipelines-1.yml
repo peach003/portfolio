@@ -7,7 +7,11 @@
 trigger:
   branches:
     include:
-      - portfolio2  # 恢复原始配置
+      - main  # 恢复原始配置
+
+  paths:
+    include:
+      - security-pipeline.yml
 
 pool:
   name: 'Default'
