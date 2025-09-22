@@ -1,14 +1,19 @@
 # ============================================================================
-# Security Monitoring Pipeline (Without SonarCloud)
+# Security Monitoring Pipeline with SonarCloud
 # ============================================================================
-# 专注于 Snyk + ZAP 的安全扫描，暂时跳过 SonarCloud
+# 使用SonarCloud + Snyk + ZAP的完整安全管道
 # ============================================================================
+
+# 明确禁用 Pull Request 触发
 pr: none
 
 trigger:
   branches:
     include:
-      - portfolio2
+      - main  # 改为 main 分支
+  paths:
+    include:
+      - security-pipeline.yml  # 只监控安全管道文件变化
 
 pool:
   name: 'Default'
@@ -16,6 +21,9 @@ pool:
 variables:
   nodeVersion: '18.x'
   buildPath: '$(System.DefaultWorkingDirectory)'
+  sonarCloudOrganization: '8600315'
+  sonarCloudProjectKey: '8600315_Portfolio'
+  sonarCloudProjectName: 'Portfolio'
   zapVmIp: 'localhost'
   zapPort: '8080'
   targetUrl: 'http://www.bon.cc'
@@ -26,7 +34,63 @@ stages:
   displayName: 'Static Security Analysis'
   jobs:
   
-  # Snyk依赖扫描
+  # SonarCloud 代码分析
+  - job: SonarQubeAnalysis
+    displayName: 'SonarCloud Code Analysis'
+    steps:
+    
+    - checkout: self
+      fetchDepth: 0
+    
+    - task: NodeTool@0
+      displayName: 'Setup Node.js'
+      inputs:
+        versionSpec: '$(nodeVersion)'
+        checkLatest: true
+    
+    - task: SonarCloudPrepare@1
+      displayName: 'Prepare SonarCloud Analysis'
+      inputs:
+        SonarCloud: 'Sonar'
+        organization: '$(sonarCloudOrganization)'
+        scannerMode: 'CLI'
+        configMode: 'manual'
+        cliProjectKey: '$(sonarCloudProjectKey)'
+        cliProjectName: '$(sonarCloudProjectName)'
+        cliSources: '.'
+        extraProperties: |
+          sonar.exclusions=**/node_modules/**,**/out/**,**/.next/**,**/coverage/**,**/*.min.js,**/public/**
+          sonar.javascript.lcov.reportPaths=coverage/lcov.info
+          sonar.typescript.lcov.reportPaths=coverage/lcov.info
+          sonar.coverage.exclusions=**/*.test.js,**/*.spec.js,**/test/**,**/tests/**,**/__tests__/**
+    
+    - script: |
+        npm ci --prefer-offline --no-audit
+      displayName: 'Install Dependencies'
+      workingDirectory: '$(buildPath)'
+    
+    - script: |
+        if [ -f "package.json" ] && grep -q '"test.*coverage"' package.json; then
+          npm run test:coverage || npm run test -- --coverage --watchAll=false || true
+        else
+          echo "No coverage test script found, skipping coverage"
+        fi
+      displayName: 'Run Tests with Coverage'
+      workingDirectory: '$(buildPath)'
+      continueOnError: true
+    
+    - task: SonarCloudAnalyze@1
+      displayName: 'Run SonarCloud Code Analysis'
+      continueOnError: true
+    
+    - task: SonarCloudPublish@1
+      displayName: 'Publish SonarCloud Quality Gate Result'
+      inputs:
+        pollingTimeoutSec: '300'
+      condition: succeededOrFailed()
+      continueOnError: true
+
+  # Snyk 依赖扫描
   - job: SnykSecurity
     displayName: 'Snyk Dependency Security Scan'
     steps:
@@ -82,10 +146,10 @@ stages:
           echo "Checking ZAP service status..."
           if curl -s "http://$(zapVmIp):$(zapPort)/JSON/core/view/version/" > /dev/null 2>&1; then
             VERSION=$(curl -s "http://$(zapVmIp):$(zapPort)/JSON/core/view/version/" | grep -o '"version":"[^"]*"' | cut -d'"' -f4)
-            echo "✅ ZAP is running. Version: $VERSION"
+            echo "ZAP is running. Version: $VERSION"
           else
-            echo "##vso[task.logissue type=error]❌ ZAP service is not accessible"
-            echo "Start ZAP with: ./zap.sh -daemon -host 0.0.0.0 -port $(zapPort)"
+            echo "##vso[task.logissue type=error]ZAP service is not accessible"
+            echo "Start ZAP with: ./zap.sh -daemon -host 0.0.0.0 -port $(zapPort) -config api.disablekey=true"
             exit 1
           fi
     
@@ -105,7 +169,7 @@ stages:
             echo "Attempt $ATTEMPT/$MAX_ATTEMPTS..."
             
             if HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$(targetUrl)" 2>/dev/null) && [ "$HTTP_CODE" = "200" ]; then
-              echo "✅ Website is available! HTTP $HTTP_CODE"
+              echo "Website is available! HTTP $HTTP_CODE"
               break
             else
               echo "Attempt $ATTEMPT failed"
@@ -184,15 +248,11 @@ stages:
           REPORT_DIR="$(Build.ArtifactStagingDirectory)"
           mkdir -p "$REPORT_DIR"
           
-          echo "Generating security reports..."
-          
           # HTML报告
           curl -s "http://$(zapVmIp):$(zapPort)/OTHER/core/other/htmlreport/${API_KEY_PARAM}" -o "$REPORT_DIR/zap-security-report.html"
-          echo "HTML report generated"
           
           # JSON报告
           curl -s "http://$(zapVmIp):$(zapPort)/JSON/core/view/alerts/${API_KEY_PARAM}" > "$REPORT_DIR/zap-security-report.json"
-          echo "JSON report generated"
           
           # 获取摘要 - 使用 grep 替代 jq
           SUMMARY=$(curl -s "http://$(zapVmIp):$(zapPort)/JSON/core/view/alertsSummary/${API_KEY_PARAM}")
@@ -200,12 +260,10 @@ stages:
           MEDIUM=$(echo "$SUMMARY" | grep -o '"Medium":"[0-9]*"' | grep -o '[0-9]*')
           LOW=$(echo "$SUMMARY" | grep -o '"Low":"[0-9]*"' | grep -o '[0-9]*')
           
-          echo ""
-          echo "================ SECURITY SCAN RESULTS ================"
-          echo "  High Risk:   ${HIGH:-0}"
+          echo "Security Scan Results:"
+          echo "  High Risk: ${HIGH:-0}"
           echo "  Medium Risk: ${MEDIUM:-0}"
-          echo "  Low Risk:    ${LOW:-0}"
-          echo "======================================================="
+          echo "  Low Risk: ${LOW:-0}"
           
           # 设置变量
           echo "##vso[task.setvariable variable=ZAP_HIGH_RISK;isOutput=true]${HIGH:-0}"
@@ -248,37 +306,17 @@ stages:
           # 获取变量值，默认为0
           HIGH_RISK=${ZAP_HIGH_RISK:-0}
           MEDIUM_RISK=${ZAP_MEDIUM_RISK:-0}
-          LOW_RISK=${ZAP_LOW_RISK:-0}
           
-          echo "Current Security Status:"
-          echo "  High Risk:   $HIGH_RISK vulnerabilities"
-          echo "  Medium Risk: $MEDIUM_RISK vulnerabilities"
-          echo "  Low Risk:    $LOW_RISK vulnerabilities"
-          echo ""
+          echo "Security Status:"
+          echo "  High Risk: $HIGH_RISK"
+          echo "  Medium Risk: $MEDIUM_RISK"
           
-          # 安全门禁标准
-          MAX_HIGH=0
-          MAX_MEDIUM=2
-          MAX_LOW=10
-          
-          echo "Security Gate Standards:"
-          echo "  High Risk:   Maximum $MAX_HIGH allowed"
-          echo "  Medium Risk: Maximum $MAX_MEDIUM allowed"
-          echo "  Low Risk:    Maximum $MAX_LOW allowed"
-          echo ""
-          
-          if [ "$HIGH_RISK" -gt "$MAX_HIGH" ]; then
+          if [ "$HIGH_RISK" -gt 0 ]; then
             echo "##vso[task.logissue type=error]Security Gate Failed: $HIGH_RISK high-risk vulnerabilities"
-            echo "❌ SECURITY GATE: FAILED"
-            echo ""
-            echo "Recommended Actions:"
-            echo "1. Review ZAP security report in artifacts"
-            echo "2. Fix high-risk vulnerabilities first"
-            echo "3. Re-run security scan after fixes"
+            echo "SECURITY GATE: FAILED"
             exit 1
           else
-            echo "✅ SECURITY GATE: PASSED"
-            echo "Your portfolio website meets security standards!"
+            echo "SECURITY GATE: PASSED"
           fi
 
 schedules:
@@ -286,5 +324,5 @@ schedules:
   displayName: Weekly Security Scan
   branches:
     include:
-    - portfolio2
+    - main
   always: true
