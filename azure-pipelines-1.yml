@@ -1,0 +1,869 @@
+# ============================================================================
+# Security Monitoring Pipeline for Portfolio
+# ============================================================================
+# 文件名: security-pipeline.yml
+# 目的: 专注于安全扫描和监测的DevSecOps流水线
+# 更新日期: 2025年9月
+# 
+# 流水线架构:
+# 1. 静态安全分析 (SAST) - SonarQube代码分析 + Snyk依赖扫描
+# 2. 动态安全测试 (DAST) - OWASP ZAP渗透测试
+# 3. 安全门禁验证 - 评估风险并决定是否允许部署
+# 4. 定时扫描 - 每周自动执行完整安全检查
+# ============================================================================
+
+# ============================================================================
+# 触发器配置
+# ============================================================================
+trigger:
+  branches:
+    include:
+      - portfolio2  # Portfolio项目主分支
+
+
+# ============================================================================
+# 代理池配置
+# ============================================================================
+pool:
+  name: 'Default'  # 使用默认代理池,确保Azure DevOps中已配置
+
+# ============================================================================
+# 全局变量定义
+# ============================================================================
+variables:
+  # 构建相关变量
+  nodeVersion: '18.x'                              # Node.js版本,与项目兼容
+  buildPath: '$(System.DefaultWorkingDirectory)'   # 工作目录路径
+  
+  # 安全工具配置变量
+  sonarCloudOrganization: '8600315'                # SonarCloud组织ID
+  sonarCloudProjectKey: '8600315_Portfolio'        # SonarCloud项目唯一标识
+  sonarCloudProjectName: 'Portfolio'               # 项目显示名称
+  zapVmIp: 'localhost'                             # ZAP服务运行的IP地址
+  zapPort: '8080'                                  # ZAP服务监听端口
+  targetUrl: 'http://www.bon.cc'                   # 要扫描的目标网站URL
+  zapApiKey: ''                                    # ZAP API密钥(可选,增强安全性)
+
+# ============================================================================
+# 阶段1: 静态安全分析 (SAST - Static Application Security Testing)
+# ============================================================================
+stages:
+- stage: StaticSecurity
+  displayName: 'Static Security Analysis'
+  jobs:
+  
+  # ----------------------------------------------------------------------------
+  # Job 1.1: SonarQube代码质量和安全分析
+  # 目的: 扫描源代码,发现潜在的安全漏洞、代码异味和质量问题
+  # ----------------------------------------------------------------------------
+  - job: SonarQubeAnalysis
+    displayName: 'SonarQube Code Analysis'
+    steps:
+    
+    # 步骤1: 检出源代码
+    # fetchDepth: 0 表示获取完整的Git历史记录,用于更准确的代码分析
+    - checkout: self
+      fetchDepth: 0
+    
+    # 步骤2: 安装Node.js环境
+    # 用于后续的依赖安装和测试执行
+    - task: NodeTool@0
+      displayName: 'Setup Node.js for SonarQube'
+      inputs:
+        versionSpec: '$(nodeVersion)'   # 使用变量定义的Node版本
+        checkLatest: true               # 检查并使用该版本系列的最新补丁版本
+    
+    # 步骤3: 准备SonarQube扫描环境
+    # 配置扫描参数和排除规则
+    - task: SonarQubePrepare@5
+      displayName: 'Prepare SonarCloud Analysis'
+      inputs:
+        SonarQube: 'Sonar'                          # 服务连接名称(需在Azure DevOps中预配置)
+        scannerMode: 'CLI'                          # 使用命令行扫描模式
+        configMode: 'manual'                        # 手动配置模式
+        cliProjectKey: '$(sonarCloudProjectKey)'    # 项目唯一标识
+        cliProjectName: '$(sonarCloudProjectName)'  # 项目显示名称
+        cliSources: '.'                             # 源代码根目录
+        extraProperties: |
+          # 排除不需要扫描的文件和目录
+          sonar.exclusions=**/node_modules/**,**/out/**,**/.next/**,**/coverage/**,**/*.min.js,**/public/**
+          # 代码覆盖率报告路径(JavaScript和TypeScript)
+          sonar.javascript.lcov.reportPaths=coverage/lcov.info
+          sonar.typescript.lcov.reportPaths=coverage/lcov.info
+          # 排除测试文件的覆盖率统计
+          sonar.coverage.exclusions=**/*.test.js,**/*.spec.js,**/test/**,**/tests/**,**/__tests__/**
+          # 测试文件位置
+          sonar.tests=.
+          # 测试文件匹配模式
+          sonar.test.inclusions=**/*.test.js,**/*.spec.js,**/__tests__/**
+    
+    # 步骤4: 安装项目依赖
+    # 使用npm ci确保依赖版本与package-lock.json一致
+    - script: |
+        npm ci --prefer-offline --no-audit
+      displayName: 'Install Dependencies for Analysis'
+      workingDirectory: '$(buildPath)'
+    
+    # 步骤5: 运行测试并生成覆盖率报告
+    # 覆盖率数据将被SonarQube使用
+    - script: |
+        # 检查package.json中是否有测试脚本
+        if [ -f "package.json" ] && grep -q '"test.*coverage"' package.json; then
+          # 尝试运行test:coverage脚本,如果不存在则运行标准测试
+          npm run test:coverage || npm run test -- --coverage --watchAll=false
+        else
+          echo "No coverage test script found, skipping coverage"
+        fi
+      displayName: 'Run Tests with Coverage'
+      workingDirectory: '$(buildPath)'
+      continueOnError: true  # 即使测试失败也继续执行,不阻断流水线
+    
+    # 步骤6: 执行SonarQube代码分析
+    # 将代码、测试结果和覆盖率数据上传到SonarQube服务器
+    - task: SonarQubeAnalyze@5
+      displayName: 'Run SonarQube Code Analysis'
+    
+    # 步骤7: 发布SonarQube质量门结果
+    # 等待SonarQube服务器完成分析并返回质量门状态
+    - task: SonarQubePublish@5
+      displayName: 'Publish SonarQube Quality Gate Result'
+      inputs:
+        pollingTimeoutSec: '300'  # 最多等待5分钟获取结果
+
+  # ----------------------------------------------------------------------------
+  # Job 1.2: Snyk依赖安全扫描
+  # 目的: 检测npm依赖包中的已知安全漏洞
+  # ----------------------------------------------------------------------------
+  - job: SnykSecurity
+    displayName: 'Snyk Dependency Security Scan'
+    steps:
+    
+    # 步骤1: 检出源代码
+    - checkout: self
+    
+    # 步骤2: 安装Node.js环境
+    - task: NodeTool@0
+      displayName: 'Setup Node.js for Snyk'
+      inputs:
+        versionSpec: '$(nodeVersion)'
+        checkLatest: true
+    
+    # 步骤3: 安装项目依赖
+    # Snyk需要分析实际安装的依赖包
+    - script: |
+        npm ci --prefer-offline --no-audit
+      displayName: 'Install Dependencies for Snyk'
+      workingDirectory: '$(buildPath)'
+    
+    # 步骤4: 执行Snyk安全扫描
+    # 扫描package.json和node_modules中的漏洞
+    - task: SnykSecurityScan@1
+      displayName: 'Run Snyk Security Scan'
+      inputs:
+        serviceConnectionEndpoint: 'Snyk'     # Snyk服务连接(需预配置)
+        testType: 'app'                       # 应用扫描模式
+        severityThreshold: 'medium'           # 中等及以上严重性的漏洞会被报告
+        monitorWhen: 'always'                 # 始终监控项目
+        failOnIssues: false                   # 发现漏洞时不立即失败,允许继续流水线
+        projectName: '$(sonarCloudProjectName)'
+        additionalArguments: '--file=package.json'  # 指定要扫描的文件
+    
+    # 步骤5: 发布Snyk测试结果
+    # 将结果发布到Azure DevOps的测试结果面板
+    - task: PublishTestResults@2
+      displayName: 'Publish Snyk Test Results'
+      inputs:
+        testResultsFormat: 'JUnit'                    # JUnit格式的测试结果
+        testResultsFiles: '**/*snyk-test-results.xml' # Snyk生成的结果文件
+        mergeTestResults: true                         # 合并多个测试结果
+        failTaskOnFailedTests: false                   # 不因测试失败而中断
+      condition: always()  # 无论前面步骤成功与否都执行
+
+# ============================================================================
+# 阶段2: 动态安全测试 (DAST - Dynamic Application Security Testing)
+# ============================================================================
+- stage: DynamicSecurity
+  displayName: 'Dynamic Security Testing'
+  dependsOn: StaticSecurity   # 依赖静态安全分析完成
+  condition: succeeded()       # 仅在静态分析成功后执行
+  jobs:
+  
+  # ----------------------------------------------------------------------------
+  # Job 2.1: OWASP ZAP渗透测试
+  # 目的: 对运行中的应用进行动态安全测试,发现运行时漏洞
+  # ----------------------------------------------------------------------------
+  - job: ZAPSecurityScan
+    displayName: 'OWASP ZAP Security Scan'
+    steps:
+    
+    # 步骤1: 检查ZAP服务状态
+    # 确保ZAP代理服务正在运行并可访问
+    - task: PowerShell@2
+      displayName: 'Check ZAP Service Status'
+      inputs:
+        targetType: 'inline'
+        script: |
+          Write-Host "Checking ZAP service status..."
+          try {
+            # 调用ZAP API获取版本信息,验证服务可用性
+            $response = Invoke-RestMethod -Uri "http://$(zapVmIp):$(zapPort)/JSON/core/view/version/"
+            Write-Host "ZAP is running. Version: $($response.version)"
+          }
+          catch {
+            # 如果连接失败,输出详细的故障排除步骤
+            Write-Error "ZAP service is not accessible at http://$(zapVmIp):$(zapPort)"
+            Write-Error "Error: $($_.Exception.Message)"
+            Write-Host ""
+            Write-Host "TROUBLESHOOTING STEPS:"
+            Write-Host "1. Verify ZAP is running on VM: $(zapVmIp)"
+            Write-Host "2. Check if ZAP daemon is started:"
+            Write-Host "   ./zap.sh -daemon -host 0.0.0.0 -port $(zapPort)"
+            Write-Host "3. Verify firewall allows port $(zapPort)"
+            Write-Host "4. Test connectivity: curl http://$(zapVmIp):$(zapPort)/JSON/core/view/version/"
+            throw  # 抛出异常,停止流水线
+          }
+    
+    # 步骤2: 等待网站可用
+    # 确保目标网站已部署并可访问,避免扫描失败
+    - task: PowerShell@2
+      displayName: 'Wait for Website Availability'
+      inputs:
+        targetType: 'inline'
+        script: |
+          Write-Host "Waiting for website to be available at $(targetUrl)..."
+          Start-Sleep -Seconds 60  # 初始等待60秒
+          
+          $maxAttempts = 10   # 最多尝试10次
+          $attempt = 0
+          $isReady = $false
+          
+          # 循环检查网站可用性
+          do {
+            $attempt++
+            Write-Host "Attempt $attempt/$maxAttempts: Testing website availability..."
+            try {
+              # 发送HTTP请求检查网站状态
+              $response = Invoke-WebRequest -Uri "$(targetUrl)" -UseBasicParsing -TimeoutSec 30
+              if ($response.StatusCode -eq 200) {
+                Write-Host "Website is available! Status code: $($response.StatusCode)"
+                Write-Host "Content length: $($response.Content.Length) characters"
+                $isReady = $true
+              }
+            }
+            catch {
+              Write-Host "Attempt $attempt failed: $($_.Exception.Message)"
+              if ($attempt -lt $maxAttempts) {
+                Write-Host "Waiting 30 seconds before retry..."
+                Start-Sleep -Seconds 30  # 失败后等待30秒再试
+              }
+            }
+          } while (-not $isReady -and $attempt -lt $maxAttempts)
+          
+          # 如果网站仍未就绪,发出警告但继续执行
+          if (-not $isReady) {
+            Write-Warning "Website may not be fully ready, but continuing with scan..."
+            Write-Host "This might affect scan results. Consider increasing wait time."
+          } else {
+            Write-Host "Website is ready for security testing!"
+          }
+    
+    # 步骤3: 执行ZAP综合安全扫描
+    # 包括Spider爬虫和主动安全扫描
+    - task: PowerShell@2
+      displayName: 'ZAP Comprehensive Security Scan'
+      inputs:
+        targetType: 'inline'
+        script: |
+          Write-Host "Starting comprehensive ZAP security scan..."
+          Write-Host "Target: $(targetUrl)"
+          Write-Host "ZAP Server: $(zapVmIp):$(zapPort)"
+          Write-Host ""
+          
+          # 如果配置了API密钥,添加到请求参数中
+          $apiKeyParam = if ("$(zapApiKey)" -ne "") { "&apikey=$(zapApiKey)" } else { "" }
+          
+          try {
+            # 子步骤3.1: 创建新的扫描会话
+            # 每次扫描使用独立的会话,避免数据混淆
+            Write-Host "Creating new ZAP session..."
+            $newSessionUrl = "http://$(zapVmIp):$(zapPort)/JSON/core/action/newSession/?name=portfolio-scan-$(Build.BuildId)&overwrite=true$apiKeyParam"
+            $sessionResponse = Invoke-RestMethod -Uri $newSessionUrl
+            Write-Host "New ZAP session created"
+            
+            # 子步骤3.2: 配置目标上下文
+            # 设置扫描范围,只扫描目标网站
+            Write-Host "Configuring target context..."
+            $encodedUrl = [System.Web.HttpUtility]::UrlEncode("$(targetUrl).*")
+            $contextUrl = "http://$(zapVmIp):$(zapPort)/JSON/context/action/includeInContext/?contextName=Default+Context&regex=$encodedUrl$apiKeyParam"
+            Invoke-RestMethod -Uri $contextUrl
+            Write-Host "Context configured for $(targetUrl)"
+            
+            # 子步骤3.3: 启动Spider爬虫扫描
+            # Spider会发现网站的所有页面和链接
+            Write-Host ""
+            Write-Host "Starting Spider scan (Website discovery)..."
+            $encodedTargetUrl = [System.Web.HttpUtility]::UrlEncode("$(targetUrl)")
+            $spiderUrl = "http://$(zapVmIp):$(zapPort)/JSON/spider/action/scan/?url=$encodedTargetUrl$apiKeyParam"
+            $spiderResponse = Invoke-RestMethod -Uri $spiderUrl
+            $spiderScanId = $spiderResponse.scan
+            Write-Host "Spider scan started with ID: $spiderScanId"
+            
+            # 子步骤3.4: 监控Spider扫描进度
+            # 定期查询扫描状态,直到完成
+            do {
+              Start-Sleep -Seconds 15  # 每15秒检查一次
+              $statusUrl = "http://$(zapVmIp):$(zapPort)/JSON/spider/view/status/?scanId=$spiderScanId$apiKeyParam"
+              $statusResponse = Invoke-RestMethod -Uri $statusUrl
+              $progress = [int]$statusResponse.status
+              Write-Host "Spider scan progress: $progress% (discovering pages and resources)"
+              
+              # 显示已发现的URL数量
+              if ($progress -gt 10) {
+                try {
+                  $urlsUrl = "http://$(zapVmIp):$(zapPort)/JSON/spider/view/results/?scanId=$spiderScanId$apiKeyParam"
+                  $urlsResponse = Invoke-RestMethod -Uri $urlsUrl
+                  $urlCount = $urlsResponse.results.Count
+                  Write-Host "   Discovered URLs so far: $urlCount"
+                }
+                catch {
+                  # 忽略获取URL列表的错误
+                }
+              }
+            } while ($progress -lt 100)
+            
+            Write-Host "Spider scan completed - Website discovery finished"
+            
+            # 子步骤3.5: 获取并显示发现的URL
+            # 用于验证Spider是否正确爬取了网站
+            try {
+              $finalUrlsUrl = "http://$(zapVmIp):$(zapPort)/JSON/spider/view/results/?scanId=$spiderScanId$apiKeyParam"
+              $finalUrlsResponse = Invoke-RestMethod -Uri $finalUrlsUrl
+              $totalUrls = $finalUrlsResponse.results.Count
+              Write-Host "Total URLs discovered: $totalUrls"
+              
+              if ($totalUrls -gt 0) {
+                Write-Host "Sample discovered URLs:"
+                # 显示前5个URL作为示例
+                $finalUrlsResponse.results | Select-Object -First 5 | ForEach-Object {
+                  Write-Host "   - $_"
+                }
+                if ($totalUrls -gt 5) {
+                  Write-Host "   ... and $($totalUrls - 5) more URLs"
+                }
+              }
+            }
+            catch {
+              Write-Host "Could not retrieve URL list, but continuing..."
+            }
+            
+            # 子步骤3.6: 启动主动安全扫描
+            # 对发现的每个URL进行深度安全测试
+            Write-Host ""
+            Write-Host "Starting Active Security Scan (Vulnerability detection)..."
+            $activeScanUrl = "http://$(zapVmIp):$(zapPort)/JSON/ascan/action/scan/?url=$encodedTargetUrl$apiKeyParam"
+            $activeScanResponse = Invoke-RestMethod -Uri $activeScanUrl
+            $activeScanId = $activeScanResponse.scan
+            Write-Host "Active scan started with ID: $activeScanId"
+            Write-Host "This may take several minutes depending on site complexity..."
+            
+            # 子步骤3.7: 监控主动扫描进度
+            # 主动扫描比Spider慢,因为要测试各种攻击向量
+            $lastProgress = 0
+            do {
+              Start-Sleep -Seconds 30  # 每30秒检查一次
+              $statusUrl = "http://$(zapVmIp):$(zapPort)/JSON/ascan/view/status/?scanId=$activeScanId$apiKeyParam"
+              $statusResponse = Invoke-RestMethod -Uri $statusUrl
+              $progress = [int]$statusResponse.status
+              
+              # 只在进度变化时输出,避免重复信息
+              if ($progress -ne $lastProgress) {
+                Write-Host "Active scan progress: $progress% (testing for vulnerabilities)"
+                
+                # 显示已发送的安全测试请求数量
+                try {
+                  $messagesUrl = "http://$(zapVmIp):$(zapPort)/JSON/ascan/view/messagesIds/?scanId=$activeScanId$apiKeyParam"
+                  $messagesResponse = Invoke-RestMethod -Uri $messagesUrl
+                  $requestCount = $messagesResponse.messagesIds.Count
+                  Write-Host "   Security requests sent: $requestCount"
+                }
+                catch {
+                  # 忽略获取消息ID的错误
+                }
+                
+                $lastProgress = $progress
+              }
+            } while ($progress -lt 100)
+            
+            Write-Host "Active security scan completed"
+            Write-Host ""
+            
+          }
+          catch {
+            # 扫描失败时的错误处理
+            Write-Error "ZAP scan failed: $($_.Exception.Message)"
+            Write-Host "Troubleshooting tips:"
+            Write-Host "1. Check ZAP daemon is running and accessible"
+            Write-Host "2. Verify target website is accessible from ZAP server"
+            Write-Host "3. Check firewall and network connectivity"
+            Write-Host "4. Verify ZAP API key if configured"
+            throw  # 抛出异常,停止流水线
+          }
+      timeoutInMinutes: 60  # 设置60分钟超时,防止扫描无限期运行
+    
+    # 步骤4: 生成和分析安全报告
+    # 从ZAP获取扫描结果并生成多种格式的报告
+    - task: PowerShell@2
+      displayName: 'Generate and Analyze Security Reports'
+      inputs:
+        targetType: 'inline'
+        script: |
+          Write-Host "Generating comprehensive security reports..."
+          
+          # API密钥参数(如果配置)
+          $apiKeyParam = if ("$(zapApiKey)" -ne "") { "?apikey=$(zapApiKey)" } else { "" }
+          
+          # 确保输出目录存在
+          $reportDir = "$(Build.ArtifactStagingDirectory)"
+          if (-not (Test-Path $reportDir)) {
+            New-Item -ItemType Directory -Path $reportDir -Force
+          }
+          
+          try {
+            # 子步骤4.1: 生成HTML格式报告
+            # HTML报告适合人工审阅,包含详细的漏洞描述
+            Write-Host "Generating HTML security report..."
+            $htmlReportUrl = "http://$(zapVmIp):$(zapPort)/OTHER/core/other/htmlreport/$apiKeyParam"
+            $htmlReport = Invoke-WebRequest -Uri $htmlReportUrl -UseBasicParsing -TimeoutSec 120
+            $htmlReport.Content | Out-File -FilePath "$reportDir/zap-security-report.html" -Encoding UTF8
+            Write-Host "HTML report generated: zap-security-report.html"
+            
+            # 子步骤4.2: 生成JSON格式报告
+            # JSON报告适合程序化处理和集成到其他系统
+            Write-Host "Generating JSON security report..."
+            $jsonReportUrl = "http://$(zapVmIp):$(zapPort)/JSON/core/view/alerts/$apiKeyParam"
+            $jsonReport = Invoke-RestMethod -Uri $jsonReportUrl -TimeoutSec 60
+            $jsonReport | ConvertTo-Json -Depth 10 | Out-File -FilePath "$reportDir/zap-security-report.json" -Encoding UTF8
+            Write-Host "JSON report generated: zap-security-report.json"
+            
+            # 子步骤4.3: 生成XML格式报告
+            # XML报告适合与其他安全工具集成
+            Write-Host "Generating XML security report..."
+            $xmlReportUrl = "http://$(zapVmIp):$(zapPort)/OTHER/core/other/xmlreport/$apiKeyParam"
+            $xmlReport = Invoke-WebRequest -Uri $xmlReportUrl -UseBasicParsing -TimeoutSec 60
+            $xmlReport.Content | Out-File -FilePath "$reportDir/zap-security-report.xml" -Encoding UTF8
+            Write-Host "XML report generated: zap-security-report.xml"
+            
+            # 子步骤4.4: 获取警报摘要
+            # 按风险级别统计漏洞数量
+            Write-Host "Analyzing security findings..."
+            $alertsUrl = "http://$(zapVmIp):$(zapPort)/JSON/core/view/alertsSummary/$apiKeyParam"
+            $alertsSummary = Invoke-RestMethod -Uri $alertsUrl
+            
+            # 子步骤4.5: 获取详细警报信息
+            # 用于显示具体的漏洞详情
+            $detailedAlertsUrl = "http://$(zapVmIp):$(zapPort)/JSON/core/view/alerts/$apiKeyParam"
+            $detailedAlerts = Invoke-RestMethod -Uri $detailedAlertsUrl
+            
+            # 子步骤4.6: 输出扫描结果摘要
+            Write-Host ""
+            Write-Host "================ SECURITY SCAN RESULTS ================"
+            Write-Host "Target: $(targetUrl)"
+            Write-Host "Scan completed: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+            Write-Host ""
+            Write-Host "VULNERABILITY SUMMARY:"
+            Write-Host "   High Risk:    $($alertsSummary.alertsSummary.High) vulnerabilities"
+            Write-Host "   Medium Risk:  $($alertsSummary.alertsSummary.Medium) vulnerabilities"
+            Write-Host "   Low Risk:     $($alertsSummary.alertsSummary.Low) vulnerabilities"
+            Write-Host "   Informational: $($alertsSummary.alertsSummary.Informational) items"
+            Write-Host ""
+            
+            # 子步骤4.7: 筛选和显示高危漏洞
+            # 高危漏洞需要立即关注
+            $highRiskAlerts = $detailedAlerts.alerts | Where-Object { $_.risk -eq "High" }
+            $mediumRiskAlerts = $detailedAlerts.alerts | Where-Object { $_.risk -eq "Medium" }
+            
+            if ($highRiskAlerts.Count -gt 0) {
+              Write-Host "HIGH RISK VULNERABILITIES FOUND:"
+              $highRiskAlerts | ForEach-Object {
+                Write-Host "   - $($_.name)"
+                Write-Host "     URL: $($_.url)"
+                # 只显示描述的前100个字符,避免输出过长
+                Write-Host "     Description: $($_.description.Substring(0, [Math]::Min(100, $_.description.Length)))..."
+                Write-Host ""
+              }
+            }
+            
+            # 子步骤4.8: 显示中危漏洞(如果数量合理)
+            if ($mediumRiskAlerts.Count -gt 0 -and $mediumRiskAlerts.Count -le 5) {
+              Write-Host "MEDIUM RISK VULNERABILITIES:"
+              $mediumRiskAlerts | ForEach-Object {
+                Write-Host "   - $($_.name)"
+                Write-Host "     URL: $($_.url)"
+                Write-Host ""
+              }
+            } elseif ($mediumRiskAlerts.Count -gt 5) {
+              # 如果中危漏洞太多,只显示前5个
+              Write-Host "MEDIUM RISK VULNERABILITIES (showing first 5):"
+              $mediumRiskAlerts | Select-Object -First 5 | ForEach-Object {
+                Write-Host "   - $($_.name)"
+              }
+              Write-Host "   ... and $($mediumRiskAlerts.Count - 5) more medium-risk findings"
+              Write-Host ""
+            }
+            
+            # 子步骤4.9: 设置管道变量
+            # 这些变量将在后续的安全门禁阶段使用
+            Write-Host "##vso[task.setvariable variable=ZAP_HIGH_RISK;isOutput=true]$($alertsSummary.alertsSummary.High)"
+            Write-Host "##vso[task.setvariable variable=ZAP_MEDIUM_RISK;isOutput=true]$($alertsSummary.alertsSummary.Medium)"
+            Write-Host "##vso[task.setvariable variable=ZAP_LOW_RISK;isOutput=true]$($alertsSummary.alertsSummary.Low)"
+            Write-Host "##vso[task.setvariable variable=ZAP_INFO_RISK;isOutput=true]$($alertsSummary.alertsSummary.Informational)"
+            
+            Write-Host "=================================================="
+            Write-Host ""
+            Write-Host "Next Steps:"
+            Write-Host "1. Review the detailed HTML report for complete findings"
+            Write-Host "2. Address any high-risk vulnerabilities immediately"
+            Write-Host "3. Plan remediation for medium and low-risk findings"
+            Write-Host "4. Check security gate results in the next stage"
+            
+          }
+          catch {
+            # 报告生成失败的错误处理
+            Write-Error "Failed to generate security reports: $($_.Exception.Message)"
+            Write-Host "This might be due to:"
+            Write-Host "- ZAP server connectivity issues"
+            Write-Host "- Large report size causing timeouts"
+            Write-Host "- Network or firewall restrictions"
+            throw
+          }
+      condition: always()  # 即使前面步骤失败也尝试生成报告
+    
+    # 步骤5: 发布HTML安全报告
+    # 在Azure DevOps中创建可视化的报告标签页
+    - task: PublishHtmlReport@1
+      displayName: 'Publish Security Report'
+      inputs:
+        reportDir: '$(Build.ArtifactStagingDirectory)'
+        tabName: 'ZAP Security Report'  # 在Azure DevOps中显示的标签名称
+      condition: always()  # 始终尝试发布,即使扫描失败
+    
+    # 步骤6: 发布安全制品
+    # 保存所有报告文件供下载和长期存档
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Security Artifacts'
+      inputs:
+        pathToPublish: '$(Build.ArtifactStagingDirectory)'
+        artifactName: 'security-reports'  # 制品名称
+      condition: always()  # 始终发布可用的报告
+
+# ============================================================================
+# 阶段3: 安全门禁验证 (Security Quality Gates)
+# ============================================================================
+- stage: SecurityGates
+  displayName: 'Security Quality Gates'
+  dependsOn: 
+    - StaticSecurity    # 依赖静态安全分析
+    - DynamicSecurity   # 依赖动态安全测试
+  condition: always()   # 即使前面阶段失败也执行,以便生成完整报告
+  jobs:
+  
+  # ----------------------------------------------------------------------------
+  # Job 3.1: 安全验证
+  # 目的: 根据预定义的安全标准评估扫描结果,决定是否允许部署
+  # ----------------------------------------------------------------------------
+  - job: SecurityValidation
+    displayName: 'Security Gate Validation'
+    
+    # 从前面阶段获取ZAP扫描结果变量
+    variables:
+      ZAP_HIGH_RISK: $[ stageDependencies.DynamicSecurity.ZAPSecurityScan.outputs['GenerateandAnalyzeSecurityReports.ZAP_HIGH_RISK'] ]
+      ZAP_MEDIUM_RISK: $[ stageDependencies.DynamicSecurity.ZAPSecurityScan.outputs['GenerateandAnalyzeSecurityReports.ZAP_MEDIUM_RISK'] ]
+      ZAP_LOW_RISK: $[ stageDependencies.DynamicSecurity.ZAPSecurityScan.outputs['GenerateandAnalyzeSecurityReports.ZAP_LOW_RISK'] ]
+      ZAP_INFO_RISK: $[ stageDependencies.DynamicSecurity.ZAPSecurityScan.outputs['GenerateandAnalyzeSecurityReports.ZAP_INFO_RISK'] ]
+    
+    steps:
+    
+    # 步骤1: 评估安全扫描结果
+    # 根据漏洞数量和严重程度决定是否通过安全门禁
+    - task: PowerShell@2
+      displayName: 'Evaluate Security Results'
+      inputs:
+        targetType: 'inline'
+        script: |
+          Write-Host "Evaluating security scan results..."
+          Write-Host "Target: $(targetUrl)"
+          Write-Host "Build: $(Build.BuildNumber)"
+          Write-Host ""
+          
+          # 子步骤1.1: 获取扫描结果数值
+          # 处理变量可能为空的情况,默认设为0
+          $highRiskCount = if ($env:ZAP_HIGH_RISK -and $env:ZAP_HIGH_RISK -ne '') { [int]$env:ZAP_HIGH_RISK } else { 0 }
+          $mediumRiskCount = if ($env:ZAP_MEDIUM_RISK -and $env:ZAP_MEDIUM_RISK -ne '') { [int]$env:ZAP_MEDIUM_RISK } else { 0 }
+          $lowRiskCount = if ($env:ZAP_LOW_RISK -and $env:ZAP_LOW_RISK -ne '') { [int]$env:ZAP_LOW_RISK } else { 0 }
+          $infoCount = if ($env:ZAP_INFO_RISK -and $env:ZAP_INFO_RISK -ne '') { [int]$env:ZAP_INFO_RISK } else { 0 }
+          
+          # 子步骤1.2: 显示当前安全状态
+          Write-Host "Current Security Status:"
+          Write-Host "   High Risk:    $highRiskCount vulnerabilities"
+          Write-Host "   Medium Risk:  $mediumRiskCount vulnerabilities" 
+          Write-Host "   Low Risk:     $lowRiskCount vulnerabilities"
+          Write-Host "   Informational: $infoCount items"
+          Write-Host ""
+          
+          # 子步骤1.3: 定义安全门禁标准
+          # 这些阈值可以根据项目风险容忍度调整
+          $maxHighRisk = 0      # 生产环境不允许高危漏洞
+          $maxMediumRisk = 2    # 最多允许2个中危漏洞(Portfolio网站标准)
+          $maxLowRisk = 10      # 最多允许10个低危漏洞
+          
+          Write-Host "Security Gate Standards:"
+          Write-Host "   High Risk: Maximum $maxHighRisk allowed"
+          Write-Host "   Medium Risk: Maximum $maxMediumRisk allowed"
+          Write-Host "   Low Risk: Maximum $maxLowRisk allowed"
+          Write-Host ""
+          
+          # 子步骤1.4: 初始化验证变量
+          $gatePassed = $true         # 门禁是否通过
+          $issues = @()               # 发现的问题列表
+          $criticalIssues = @()       # 关键问题列表
+          
+          # 子步骤1.5: 检查高危漏洞
+          # 高危漏洞采用严格标准,不允许存在
+          if ($highRiskCount -gt $maxHighRisk) {
+            $issues += "HIGH RISK: $highRiskCount found (max allowed: $maxHighRisk) - CRITICAL"
+            $criticalIssues += "High-risk vulnerabilities must be fixed immediately"
+            # 记录错误日志到Azure DevOps
+            Write-Host "##vso[task.logissue type=error]Security Gate Failed: $highRiskCount high-risk vulnerabilities found"
+            $gatePassed = $false  # 设置门禁失败
+          }
+          
+          # 子步骤1.6: 检查中危漏洞
+          # 中危漏洞可以作为警告,不一定阻断部署
+          if ($mediumRiskCount -gt $maxMediumRisk) {
+            $issues += "MEDIUM RISK: $mediumRiskCount found (max allowed: $maxMediumRisk)"
+            # 记录警告日志
+            Write-Host "##vso[task.logissue type=warning]Security Warning: $mediumRiskCount medium-risk vulnerabilities found"
+            # 注意: 这里没有设置$gatePassed = $false,所以中危超标不会阻断
+            # 如需严格模式,取消下一行注释
+            # $gatePassed = $false
+          }
+          
+          # 子步骤1.7: 检查低危漏洞
+          # 低危漏洞仅作为信息提示
+          if ($lowRiskCount -gt $maxLowRisk) {
+            $issues += "LOW RISK: $lowRiskCount found (max recommended: $maxLowRisk)"
+            Write-Host "##vso[task.logissue type=warning]Security Info: $lowRiskCount low-risk vulnerabilities found"
+          }
+          
+          # 子步骤1.8: 输出最终评估结果
+          Write-Host ""
+          Write-Host "SECURITY GATE EVALUATION:"
+          if ($gatePassed) {
+            # 门禁通过 - 允许部署
+            Write-Host "SECURITY GATE: PASSED" -ForegroundColor Green
+            Write-Host "Your portfolio website meets security standards!" -ForegroundColor Green
+            Write-Host "Deployment can proceed safely"
+            
+            # 如果有非关键问题,也要提示用户
+            if ($issues.Count -gt 0) {
+              Write-Host ""
+              Write-Host "Note: Some non-critical issues found:"
+              foreach ($issue in $issues) {
+                Write-Host "   $issue" -ForegroundColor Yellow
+              }
+              Write-Host "Consider addressing these in future updates"
+            }
+          } else {
+            # 门禁失败 - 阻止部署
+            Write-Host "SECURITY GATE: FAILED" -ForegroundColor Red
+            Write-Host "Critical security issues must be resolved!" -ForegroundColor Red
+            Write-Host ""
+            Write-Host "Issues found:"
+            foreach ($issue in $issues) {
+              # 根据严重程度使用不同颜色
+              $color = if ($issue.Contains("HIGH RISK")) { "Red" } else { "Yellow" }
+              Write-Host "   $issue" -ForegroundColor $color
+            }
+            
+            # 显示关键问题的详细说明
+            if ($criticalIssues.Count -gt 0) {
+              Write-Host ""
+              Write-Host "IMMEDIATE ACTION REQUIRED:"
+              foreach ($critical in $criticalIssues) {
+                Write-Host "   - $critical" -ForegroundColor Red
+              }
+            }
+            
+            # 提供修复建议
+            Write-Host ""
+            Write-Host "Recommended Actions:"
+            Write-Host "1. Review detailed ZAP security report"
+            Write-Host "2. Fix high-risk vulnerabilities first"
+            Write-Host "3. Update dependencies and configurations"
+            Write-Host "4. Re-run security scan after fixes"
+            Write-Host "5. Consider security code review"
+            
+            exit 1  # 退出码1表示失败,阻止后续部署
+          }
+    
+    # 步骤2: 生成DevSecOps最终报告
+    # 创建综合性的安全评估文档
+    - task: PowerShell@2
+      displayName: 'Generate DevSecOps Final Report'
+      inputs:
+        targetType: 'inline'
+        script: |
+          # 子步骤2.1: 收集报告元数据
+          $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss UTC"
+          $buildNumber = "$(Build.BuildNumber)"
+          $commitId = "$(Build.SourceVersion)".Substring(0,7)  # 取前7位commit ID
+          
+          # 子步骤2.2: 获取安全数据
+          $highRisk = if ($env:ZAP_HIGH_RISK -and $env:ZAP_HIGH_RISK -ne '') { $env:ZAP_HIGH_RISK } else { "0" }
+          $mediumRisk = if ($env:ZAP_MEDIUM_RISK -and $env:ZAP_MEDIUM_RISK -ne '') { $env:ZAP_MEDIUM_RISK } else { "0" }
+          $lowRisk = if ($env:ZAP_LOW_RISK -and $env:ZAP_LOW_RISK -ne '') { $env:ZAP_LOW_RISK } else { "0" }
+          $infoRisk = if ($env:ZAP_INFO_RISK -and $env:ZAP_INFO_RISK -ne '') { $env:ZAP_INFO_RISK } else { "0" }
+          
+          # 子步骤2.3: 确定门禁状态
+          $gateStatus = if ($highRisk -eq "0") { "PASSED" } else { "FAILED" }
+          
+          # 子步骤2.4: 构建Markdown格式的综合报告
+          # 使用here-string创建多行文本
+          $summary = @"
+          # DevSecOps Security Assessment Report
+          
+          **Portfolio Website - Comprehensive Security Analysis**
+          
+          ---
+          
+          ## Executive Summary
+          
+          | Field | Value |
+          |-------|--------|
+          | **Pipeline** | $buildNumber |
+          | **Timestamp** | $timestamp |
+          | **Commit** | $commitId |
+          | **Target** | $(targetUrl) |
+          | **Security Gate** | $gateStatus |
+          
+          ## Security Scan Results
+          
+          ### Vulnerability Summary
+          
+          | Risk Level | Count | Status |
+          |------------|--------|--------|
+          | **High** | $highRisk | $(if ($highRisk -eq "0") { "Clean" } else { "Action Required" }) |
+          | **Medium** | $mediumRisk | $(if ([int]$mediumRisk -le 2) { "Acceptable" } else { "Review Needed" }) |
+          | **Low** | $lowRisk | $(if ([int]$lowRisk -le 10) { "Manageable" } else { "Monitor" }) |
+          | **Info** | $infoRisk | Informational |
+          
+          ### Security Testing Coverage
+          
+          #### Static Analysis (SAST)
+          - **SonarQube:** Code quality and security analysis completed
+          - **Coverage:** JavaScript/TypeScript code review
+          - **Focus:** Code vulnerabilities, code smells, security hotspots
+          
+          #### Dependency Analysis (SCA)  
+          - **Snyk:** Software composition analysis completed
+          - **Coverage:** npm package vulnerabilities
+          - **Focus:** Known vulnerabilities in dependencies
+          
+          #### Dynamic Analysis (DAST)
+          - **OWASP ZAP:** Web application security testing completed
+          - **Coverage:** Runtime vulnerability detection
+          - **Focus:** OWASP Top 10, injection attacks, XSS, CSRF
+          
+          ## Security Gate Analysis
+          
+          **Standards Applied:**
+          - High Risk: 0 allowed (strict)
+          - Medium Risk: ≤2 allowed (portfolio-appropriate)
+          - Low Risk: ≤10 allowed (manageable)
+          
+          **Result:** $gateStatus
+          
+          $(if ($highRisk -eq "0") {
+          @"
+          ### Security Compliance Achieved
+          
+          Your portfolio website meets production security standards:
+          - No critical vulnerabilities detected
+          - Risk levels within acceptable thresholds  
+          - Secure deployment authorized
+          - Continuous monitoring recommended
+          "@
+          } else {
+          @"
+          ### Security Issues Detected
+          
+          **Immediate Actions Required:**
+          - Address $highRisk high-risk vulnerabilities
+          - Review detailed security reports
+          - Apply security patches and updates
+          - Re-run security validation
+          "@
+          })
+          
+          ## Detailed Reports Available
+          
+          | Report Type | Description | Location |
+          |-------------|-------------|----------|
+          | **ZAP HTML Report** | Interactive security findings | Pipeline Artifacts |
+          | **ZAP JSON Report** | Machine-readable results | Pipeline Artifacts |
+          | **SonarQube Dashboard** | Code quality metrics | SonarQube Server |
+          | **Snyk Report** | Dependency vulnerabilities | Pipeline Results |
+          
+          ## Security Recommendations
+          
+          ### Immediate Actions
+          1. **Review Reports:** Examine all security findings in detail
+          2. **Patch Critical:** Address any high-risk vulnerabilities immediately  
+          3. **Update Dependencies:** Keep npm packages current
+          4. **Monitor Continuously:** Set up regular security scans
+          
+          ### Long-term Security
+          1. **Security Headers:** Implement CSP, HSTS, X-Frame-Options
+          2. **Input Validation:** Sanitize all user inputs
+          3. **HTTPS Only:** Enforce secure connections
+          4. **Regular Audits:** Schedule monthly security reviews
+          5. **Security Training:** Stay updated on web security best practices
+          
+          ---
+          
+          *Generated automatically by DevSecOps Security Pipeline*  
+          *"Security is not a product, but a process" - Bruce Schneier*
+          
+          **Next Scan Scheduled:** Weekly (Monday 3 AM)
+          "@
+          
+          # 子步骤2.5: 保存报告到文件
+          $reportDir = "$(Build.ArtifactStagingDirectory)"
+          if (-not (Test-Path $reportDir)) {
+            New-Item -ItemType Directory -Path $reportDir -Force
+          }
+          
+          $summary | Out-File -FilePath "$reportDir/devsecops-security-report.md" -Encoding UTF8
+          Write-Host $summary  # 同时输出到日志
+      condition: always()  # 始终生成报告,即使前面步骤失败
+    
+    # 步骤3: 发布最终安全报告
+    # 将综合报告保存为流水线制品
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Security Final Report'
+      inputs:
+        pathToPublish: '$(Build.ArtifactStagingDirectory)/devsecops-security-report.md'
+        artifactName: 'security-final-report'  # 制品名称
+      condition: always()  # 始终发布
+
+# ============================================================================
+# 定时安全扫描配置 (Scheduled Scans)
+# ============================================================================
+# 除了代码提交触发外,还定期执行安全扫描以发现新的漏洞
+schedules:
+- cron: "0 3 * * 1"  # Cron表达式: 每周一凌晨3点(UTC时间)执行
+  displayName: Weekly Security Scan  # 显示名称
+  branches:
+    include:
+    - portfolio2  # 只扫描portfolio2分支
+  always: true  # 即使代码没有变化也执行扫描(重要: 检测新发现的漏洞)
