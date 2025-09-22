@@ -11,7 +11,7 @@ trigger:
     exclude:
       - README.md
       - docs/*
-
+      - security-pipeline.yml 
 pool:
   name: 'Default'
 
